@@ -242,8 +242,8 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST = "smtp-mail.outlook.com"
-EMAIL_HOST_USER = "monsieurdjolo@djolo.win"
-EMAIL_HOST_PASSWORD = "Emmanuel225##"
+EMAIL_HOST_USER = "test@test.com"
+EMAIL_HOST_PASSWORD = "test1234"
 
 
 # Password reset settings
