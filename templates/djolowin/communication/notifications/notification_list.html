@@ -11,13 +11,14 @@
 			{% if notifications %}
 			<div class="list-group mt-4">
 				{% for notification in notifications %}
-				<a href={% url 'communication:notification-detail' notification.id  %} class="list-group-item">
+				<a href={% url 'communication:notification-detail' notification.id  %} class="list-group-item bg-dark m-1">
 					<div class="d-flex w-100 justify-content-between">
-						<h5 class="mb-1">{{ notification.subject }}</h5>
-						<span class="badge text-dark text-wrap">{{ notification.date_sent|date:"M d, Y h:i A" }}</span>
+						<h5 class="mb-1 text-white"><strong>{{ notification.subject }}</strong></h5>
+						<hr>
+						<span class="badge text-white text-wrap">{{ notification.date_sent|date:"M d, Y h:i A" }}</span>
 					</div>
-					<h6 class="mb-1">{{ notification.body }}</h6>
-					<span class="badge text-black-50">
+					<h6 class="mb-1 text-white">{{ notification.body }}</h6>
+					<span class="badge text-white-50">
 						{% if notification.date_read %}
 						Read
 						{% else %}

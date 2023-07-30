@@ -25,5 +25,5 @@ urlpatterns = [
     path("wallet/", include("wallet.urls", namespace="wallet")),
 ]
 
-urlpatterns += staticfiles_urlpatterns()
+# urlpatterns += staticfiles_urlpatterns()
 

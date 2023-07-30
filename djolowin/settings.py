@@ -16,6 +16,7 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+APPEND_SLASH = False
 
 # Tell Django about the custom `User` model we created. The string
 # `account.User` tells Django we are referring to the `CustomUser` model in
@@ -35,7 +36,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "*",
 ]
-
+ALLOWED_CLIENT_HOSTS = ["127.0.0.1", "localhost"]
 
 SITE_ID = 1
 # Application definition
@@ -78,6 +79,7 @@ INSTALLED_APPS = [
     "order",
     "permission",
     "playercard",
+    "product",
     "reward",
     "transaction",
     "wallet",
@@ -88,12 +90,13 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "django.middleware.common.CommonMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1"]
 
 ROOT_URLCONF = "djolowin.urls"
 
@@ -202,10 +205,10 @@ STATICFILES_FINDERS = [
 
 STATIC_URL = "/static/"
 DJOLOWIN_STATIC_BASE_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "staticfiles"),
+    os.path.join(BASE_DIR, "static"),
 ]
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
@@ -231,6 +234,8 @@ DEFAULT_CURRENCY_CODE_LENGTH = 3
 DJOLOWIN_PLAYERCARD_PAGINATE_BY = 8
 DJOLOWIN_NOTIFICATIONS_PER_PAGE = 20
 DJOLOWIN_SAVE_SENT_EMAILS_TO_DB = True
+LOGIN_ATTEMPTS_TIMEOUT = 60 * 5 # 5 minutes
+MAX_LOGIN_ATTEMPTS = 5
 
 # Email server configuration
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
@@ -260,12 +265,12 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 stripe.api_key = STRIPE_SECRET_KEY
 
 # CORS settings
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",
-]
-CORS_ORIGIN_ALLOW_ALL = False
-CORS_ORIGIN_WHITELIST = ("http://localhost:8080",)
+# CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:*",
+# ]
+CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ORIGIN_WHITELIST = ("http://localhost:8080",)
 
 JWT_EXPIRE = 60 * 60 * 24 * 7  # 7 days
 
@@ -324,3 +329,17 @@ SOCIAL_AUTH_PIPELINE = [
     "social_core.pipeline.user.user_details",
     "account.social_auth.create_user",
 ]
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",  # Update with your Redis server details
+        "TIMEOUT": 180,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
+
+CACHE_TTL = 60

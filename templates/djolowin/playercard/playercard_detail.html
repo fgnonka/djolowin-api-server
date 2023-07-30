@@ -98,7 +98,7 @@
 							<a
 								type="button"
 								data-bs-toggle="modal"
-								data-bs-target="#purchaseCardModal-{{ playercard.id }}">
+								data-bs-target="#purchaseCardModal-{{ playercard.card_id }}">
 								<span class="badge badge-default rounded-pill text-dark"
 									>Purchase for {{ playercard.price }} DJOBA</span
 								>
@@ -107,7 +107,7 @@
 							{% endif %} {% if request.user == playercard.owner %} {% if not playercard.is_locked %}
 							<button id="modify-price-btn" class="btn search-btn">Modify Card</button>
 							<div id="modify-price-form" style="display: none">
-								<form method="post" action="{% url 'playercard:update_price' playercard.id %}">
+								<form method="post" action="{% url 'playercard:update_price' playercard.card_id %}">
 									{% csrf_token %} {{ form.as_p }}
 									<button class="btn" type="submit">
 										<span class="badge badge-default rounded-pill text-dark">Update Price</span>

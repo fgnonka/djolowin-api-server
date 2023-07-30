@@ -9,7 +9,6 @@ from .views import (
     user_login_view,
     RequestActivationEmailView,
     ActivateAccountView,
-    EmailSentView,
     validate_username,
 )
 
@@ -25,7 +24,6 @@ urlpatterns = [
         RequestActivationEmailView.as_view(),
         name="request_activation_email",
     ),
-    path("email_sent/", EmailSentView.as_view(), name="email_sent"),
     path("redirect/", view=user_redirect_view, name="user-redirect"),
     path("update/", view=user_update_view, name="user-update"),
     path("user-detail/<uuid:uuid>/", view=user_detail_view, name="user-detail"),

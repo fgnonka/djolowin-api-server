@@ -3,6 +3,8 @@
 *.so
 *.dll
 *.exe
+*/pycache/*
+*.pyc
 
 # Build directories
 build/

@@ -31,7 +31,7 @@ class CardRarity(models.Model):
 class PlayerCard(models.Model):
     """The base playercard object"""
 
-    
+    card_id = models.AutoField(primary_key=True)
     for_sale = models.BooleanField(default=True)
     season = models.IntegerField(default=2024)
     edition = models.CharField(max_length=255, default="AFCON LEGENDS")
@@ -87,12 +87,16 @@ class PlayerCard(models.Model):
     def __str__(self):
         return f"{self.rarity} - {self.player.name} - Index: {self.index}"
 
+
     def get_absolute_url(self):
         return reverse("playercard:playercard-detail", kwargs={"pk": self.pk})
 
     @property
     def get_player_name(self):
         return self.player.name
+    
+    def get_playercard_id(self):
+        return self.id
     
     @property
     def teams(self):

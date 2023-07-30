@@ -2,9 +2,12 @@ class CustomerEvents:
     """The different customer event types."""
 
     # Account related events
-    ACCOUNT_CREATED = "account_created"
-    ACCOUNT_ACTIVATED = "account_activated"
-    ACCOUNT_DEACTIVATED = "account_deactivated"
+    USER_SIGNUP = "user_signup"
+    USER_ACCOUNT_VERIFIED = "user_account_verified"
+    USER_LOGIN_ATTEMPT = "user_login_attempt"
+    USER_LOGIN_FAILED = "user_login_failed"
+    USER_LOGIN_SUCCESSFUL = "user_login_successful"
+    USER_ACCOUNT_DEACTIVATED = "user_account_deactivated"
     PASSWORD_RESET_LINK_SENT = "password_reset_link_sent"
     PASSWORD_RESET = "password_reset"
     PASSWORD_CHANGED = "password_changed"
@@ -13,6 +16,8 @@ class CustomerEvents:
     PHONE_CHANGE_REQUEST = "phone_change_request"
     PHONE_CHANGED = "phone_changed"
     VERIFICATION_EMAIL_SENT = "verification_email_sent"
+    NEW_VERIFICATION_EMAIL_REQUESTED = "new_verification_email_requested"
+    NEW_VERIFICATION_EMAIL_SENT = "new_verification_email_sent"
 
     # Trade related events
     PLACED_SINGLE_ORDER = "placed_single_order"  # created a single item order
@@ -35,9 +40,12 @@ class CustomerEvents:
 
     CHOICES = [
         # Account Maintenance
-        (ACCOUNT_CREATED, "The account was created"),
-        (ACCOUNT_ACTIVATED, "The account was activated"),
-        (ACCOUNT_DEACTIVATED, "The account was deactivated"),
+        (USER_SIGNUP, "The user signed up"),
+        (USER_ACCOUNT_VERIFIED, "The user account was verified"),
+        (USER_LOGIN_ATTEMPT, "The user attempted to login"),
+        (USER_LOGIN_FAILED, "The user login failed"),
+        (USER_LOGIN_SUCCESSFUL, "The user login was successful"),
+        (USER_ACCOUNT_DEACTIVATED, "The user account was deactivated"),
         (PASSWORD_RESET_LINK_SENT, "Password reset link was sent to the customer"),
         (PASSWORD_RESET, "The account password was reset"),
         (PASSWORD_CHANGED, "The account password was changed"),
@@ -52,6 +60,8 @@ class CustomerEvents:
         ),
         (EMAIL_CHANGED, "The account email address was changed"),
         (VERIFICATION_EMAIL_SENT, "A verification email was sent to the customer"),
+        (NEW_VERIFICATION_EMAIL_REQUESTED, "A new verification email was requested"),
+        (NEW_VERIFICATION_EMAIL_SENT, "A new verification email was sent"),
         (CUSTOMER_DELETED, "A customer was deleted"),
         (NAME_ASSIGNED, "A customer's name was edited"),
         (EMAIL_ASSIGNED, "A customer's email address was edited"),

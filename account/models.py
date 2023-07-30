@@ -110,6 +110,23 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
     # A timestamp representing when this object was created.
     updated_at = models.DateTimeField(auto_now=True)
 
+    verification_token = models.UUIDField(
+        _("Account Verification Token"),
+        default=uuid4,
+        editable=False,
+        null=True,
+        blank=True,
+    )
+    verification_token_expiration = models.DateTimeField(
+        _("Verification Token Expiration"), null=True, blank=True
+    )
+    reset_password_token = models.CharField(
+        _("Password Token"), max_length=255, blank=True, null=True, default=""
+    )
+    reset_password_token_expiration = models.DateTimeField(
+        _("Password Token Expiration"), null=True, blank=True
+    )
+
     # The `is_staff` flag is expected by Django to determine who can and cannot
     # log into the Django admin site. For most users this flag will always be
     # false.
@@ -118,6 +135,9 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
     # The 'is_superuser' flag is expected by Django to determine who can and
     # cannot access the admin site and perform all administrative actions.
     is_superuser = models.BooleanField(_("Superuser status"), default=False)
+    
+    # The `is_verified` flag is expected to determine if the user has verified his/her email address
+    is_verified = models.BooleanField(_("Verified"), default=False)
 
     # When a user no longer wishes to use our platform, they may try to delete
     # their account. That's a problem for us because the data we collect is
@@ -126,9 +146,7 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
     # letting them delete it. That way they won't show up on the site anymore,
     # but we can still analyze the data.
     is_active = models.BooleanField(_("Active"), default=True)
-    jwt_token_key = models.CharField(
-        max_length=12, default=partial(get_random_string, length=12)
-    )
+    
     language_code = models.CharField(max_length=35, choices=settings.LANGUAGES, default=settings.LANGUAGE_CODE)
     note = models.TextField(null=True, blank=True)
     search_document = models.TextField(blank=True, default="")
@@ -140,6 +158,7 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
     # In this case we want it to be the email field.
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
+    REQUIRED_FIELDS = ["username"]
 
     # Tells Django that the UserManager class defined above should manage
     # objects of this type.
@@ -171,9 +190,10 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
         if not self.username:
             self.username = self.email
         super().save(*args, **kwargs)
-
-        img = Image.open(self.profile_img.path)
-
+        try:
+            img = Image.open(self.profile_img.path)
+        except FileNotFoundError:
+            img = Image.open("media/default.png")
         if img.height > 300 or img.width > 300:
             output_size = (300, 300)
             img.thumbnail(output_size)

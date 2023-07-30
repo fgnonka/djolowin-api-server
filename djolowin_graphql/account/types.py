@@ -2,8 +2,8 @@ import graphene
 from graphene_django import DjangoObjectType
 
 from django.contrib.auth import get_user_model
-from graphene import relay
 from promise import Promise
+
 
 from account import models
 

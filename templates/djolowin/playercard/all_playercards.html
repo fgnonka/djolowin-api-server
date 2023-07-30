@@ -13,7 +13,7 @@
 			{{ form.as_p }}
 			<button class="btn search-btn" type="submit">Search</button>
 		</form>
-		{% comment %} <button class="btn btn-danger mt-2" type="button" id="reset-filters">Reset Filters</button> {% endcomment %}
+		<button class="btn btn-danger mt-2" type="button" id="reset-filters">Reset Filters</button>
 	</div>
 	{% endif %}
 	<br />
@@ -23,7 +23,7 @@
 		<div class="col-md-4 col-lg-3 mb-4">
 			{% include "djolowin/playercard/model/playercard.html" %}
             <div class="card-footer m-1">
-				<button type="button" class="btn search-btn" data-bs-toggle="modal" data-bs-target="#purchaseCardModal-{{ playercard.id }}">
+				<button type="button" class="btn search-btn" data-bs-toggle="modal" data-bs-target="#purchaseCardModal-{{ playercard.card_id }}">
                 Price: {{ playercard.price|floatformat:"0"|intcomma }} DJOBA
 				</button>
 				<!-- Modal -->

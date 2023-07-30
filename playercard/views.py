@@ -1,5 +1,9 @@
+import requests
+
 from django.shortcuts import render
+
 # Create your views here.
+
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
@@ -7,8 +11,10 @@ from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
-from django.views.generic import DetailView, ListView, UpdateView
+from django.views.decorators.cache import cache_page
+from django.views.generic import DetailView, ListView, UpdateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from auction.models import Auction
@@ -22,11 +28,11 @@ from playercard.signals import playercard_viewed
 from transaction.utils import create_card_purchase_transaction
 from wallet.models import UserWallet
 
+from djolowin_graphql.playercard.querymaker import playercards_query
+
 from .forms import CardForm, PlayerCardSearchForm
 from .mixins import PlayerCardSearchMixin
 from .signals import completed_card_purchase
-
-
 
 
 class UpdatePlayerCardView(LoginRequiredMixin, UpdateView):
@@ -63,8 +69,8 @@ class PlayerCardDetailView(CustomDispatchMixin, AuctionCreationMixin, DetailView
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         past_auctions = Auction.objects.filter(
-            Q(card=self.object)
-            & Q(end_time__lte=timezone.now()))[:5]
+            Q(card=self.object) & Q(end_time__lte=timezone.now())
+        )[:5]
         context["past_auctions"] = past_auctions
         context["past_auctions_count"] = past_auctions.count()
         context["auction_form"] = AuctionForm()
@@ -75,6 +81,19 @@ class PlayerCardDetailView(CustomDispatchMixin, AuctionCreationMixin, DetailView
             & Q(owner=self.object.owner)
         )
         return context
+
+
+class CardRarityListView(View):
+    def get(self, request):
+        response = requests.post(
+            "http://127.0.0.1:8000/graphql/",
+            json={"query": "{ allCardrarities {id name} }"},
+        )
+        data = response.json()
+        results = data["data"]["allCardrarities"]
+        print([result["name"] for result in results])
+        context = {"rarities": results}
+        return render(request, "djolowin/playercard/card_rarity_list.html", context)
 
 
 class PlayerCardListView(CustomDispatchMixin, PlayerCardSearchMixin, ListView):
@@ -94,7 +113,7 @@ class PlayerCardListView(CustomDispatchMixin, PlayerCardSearchMixin, ListView):
         queryset = list_of_cards_to_display()
         if form.is_valid():
             queryset = self.filter_playercards(queryset)
-        
+
         sort_by = self.request.GET.get("sort_by")
         order = self.request.GET.get("order")
 
@@ -126,7 +145,7 @@ class UserPlayerCardListView(CustomDispatchMixin, PlayerCardSearchMixin, ListVie
 
         if form.is_valid():
             queryset = self.filter_playercards(queryset)
-        
+
         sort_by = self.request.GET.get("sort_by")
         order = self.request.GET.get("order")
 
@@ -135,13 +154,11 @@ class UserPlayerCardListView(CustomDispatchMixin, PlayerCardSearchMixin, ListVie
                 sort_by = f"-{sort_by}"
             queryset = queryset.order_by(sort_by)
         return queryset
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["form"] = PlayerCardSearchForm(self.request.GET)
         return context
-
-        
 
 
 def playercards_by_team_list(request, slug):
@@ -173,17 +190,23 @@ def purchase_playercard(request, pk):
         user_wallet.balance -= playercard.price
         user_wallet.save()
         if playercard.owner:
-            seller = playercard.owner 
+            seller = playercard.owner
             seller_wallet = UserWallet.objects.get(user=seller)
             seller_wallet.balance += playercard.price
             seller_wallet.save()
             create_card_purchase_transaction(
-                buyer=request.user, seller=seller, card=playercard, amount_spent=playercard.price
+                buyer=request.user,
+                seller=seller,
+                card=playercard,
+                amount_spent=playercard.price,
             )
         else:
             create_card_purchase_transaction(
-                    buyer=request.user, seller=None, card=playercard, amount_spent=playercard.price
-                )
+                buyer=request.user,
+                seller=None,
+                card=playercard,
+                amount_spent=playercard.price,
+            )
         playercard.owner = request.user
         playercard.for_sale = False
         playercard.save()

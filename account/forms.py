@@ -80,6 +80,7 @@ class UserUpdateForm(forms.ModelForm):
             'phone_number',
             "country",
             "profile_img",
+            "phone_number",
         ]
 
     def clean_username(self):

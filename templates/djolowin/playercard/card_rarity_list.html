@@ -1,0 +1,8 @@
+{% extends 'djolowin/main.html' %}
+{% load static %}
+
+{% block content %}
+{% for rarity in rarities %}
+<h1>{{rarity.id}}-{{ rarity.name }}</h1>
+{% endfor %}
+{% endblock %}

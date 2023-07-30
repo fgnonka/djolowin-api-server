@@ -17,6 +17,9 @@
 	{% if request.user == auction.highest_bidder %}
 	<p class="text-success">You are the highest bidder on this auction.</p>
 	{% else %}
+	{% if auction.has_ended %}
+	<p class="text-danger">This auction has ended.</p>
+	{% else %}
 	<button
 		type="button"
 		class="btn search-btn"
@@ -24,6 +27,7 @@
 		data-bs-target="#auctionBidModal-{{ auction.id }}">
 		Place a bid
 	</button>
+	{% endif %}
 	<!-- Modal -->
 	{% include "djolowin/auction/modal_form/auction_bid_modal.html" %}
 </div>

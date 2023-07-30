@@ -1,0 +1,36 @@
+.notification-counter {
+	background-color: #ff0000;
+	color: white;
+	padding: 0.2rem;
+	font-size: 0.8rem;
+}
+.navbar {
+	background-color: rgb(0, 0, 0);
+	padding: 0.5rem 1rem;
+}
+
+.red-bg-dot {
+	background-color: #ff0000;
+	height: 0.1rem;
+	width: 0.1rem;
+}
+
+.dropdown-menu {
+	background-color: rgb(0, 0, 0);
+}
+
+.dropdown-item {
+	color: #ffffff;
+}
+
+.rotated {
+	transform: rotate(45deg);
+}
+
+.bell-icon {
+	fill: #ffffff;
+}
+
+.bell-icon:hover {
+	fill: #81ffd9;
+}

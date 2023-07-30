@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
+
 from account.decorators import user_is_active
 from base.models import Team, Player
 from core.mixins import CustomDispatchMixin
