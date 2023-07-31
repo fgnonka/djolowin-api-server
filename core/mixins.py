@@ -29,3 +29,12 @@ class PageTitleMixin(object):
         context["active_tab"] = self.active_tab
         return context
     
+    
+class ClientIPMixin:
+    def get_client_ip(self, request):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip

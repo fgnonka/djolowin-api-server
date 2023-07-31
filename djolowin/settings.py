@@ -2,9 +2,9 @@ import os
 import ast
 import warnings
 import sentry_sdk
-import datetime
 import stripe
 
+from datetime import timedelta
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
@@ -26,11 +26,8 @@ AUTH_USER_MODEL = "account.CustomUser"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = str(os.environ.get("SECRET_KEY"))
-RSA_PRIVATE_KEY = os.environ.get("RSA_PRIVATE_KEY", None)
-RSA_PRIVATE_PASSWORD = os.environ.get("RSA_PRIVATE_PASSWORD", None)
-JWT_MANAGER_PATH = os.environ.get(
-    "JWT_MANAGER_PATH", "djolowin.core.jwt_manager.JWTManager"
-)
+ENCRYPT_KEY = (os.environ.get("ENCRYPT_KEY"))
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 ALLOWED_HOSTS = [
@@ -38,7 +35,6 @@ ALLOWED_HOSTS = [
 ]
 ALLOWED_CLIENT_HOSTS = ["127.0.0.1", "localhost"]
 
-SITE_ID = 1
 # Application definition
 
 INSTALLED_APPS = [
@@ -51,17 +47,18 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
     # Third party apps
+    'allauth',
     "celery",
     "corsheaders",
     "django_countries",
     "django_extensions",
     "django_filters",
+    "django_redis",
     "graphene_django",
-    "graphql_auth",
-    "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
     "phonenumber_field",
     "rest_framework",
-    "rest_framework.authtoken",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "social_django",
     # local apps
     "account",
@@ -87,9 +84,9 @@ INSTALLED_APPS = [
 
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -125,6 +122,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "djolowin.wsgi.application"
 
+
+BASE_URL = "http://localhost:8000"
+SITE_ID = 1
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
@@ -162,13 +162,28 @@ AUTH_PASSWORD_VALIDATORS = [
 # JWT settings
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "account.cookie_auth.JWTAuthenticationFromCookie",
     ],
+}
+
+AUTH_COOKIE = "access_token"
+JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=1)
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": JWT_ACCESS_TOKEN_EXPIRES,
+    "REFRESH_TOKEN_LIFETIME": JWT_REFRESH_TOKEN_EXPIRES,
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": str(os.environ.get("SIGNING_JWT_KEY")),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_BLACKLIST_ENABLED': True,
 }
 
 
 AUTHENTICATION_BACKENDS = [
-    "graphql_auth.backends.GraphQLAuthBackend",
     "django.contrib.auth.backends.ModelBackend",
     "social_core.backends.google.GoogleOAuth2",
 ]
@@ -287,31 +302,20 @@ CELERY_TIMEZONE = "UTC"
 # GraphQL settings
 GRAPHENE = {
     "SCHEMA": "djolowin_graphql.api.schema",
-    "MIDDLEWARE": [
-        "graphql_jwt.middleware.JSONWebTokenMiddleware",
-    ],
     "ATOMIC_MUTATIONS": True,
 }
 
-GRAPHQL_JWT = {
-    # ...
-    "JWT_ALLOW_ANY_CLASSES": [
-        "graphql_auth.mutations.Register",
-        "graphql_auth.mutations.VerifyAccount",
-        "graphql_auth.mutations.ResendActivationEmail",
-        "graphql_auth.mutations.SendPasswordResetEmail",
-        "graphql_auth.mutations.PasswordReset",
-        "graphql_auth.mutations.ObtainJSONWebToken",
-        "graphql_auth.mutations.VerifyToken",
-        "graphql_auth.mutations.RefreshToken",
-        "graphql_auth.mutations.RevokeToken",
-        "graphql_auth.mutations.VerifySecondaryEmail",
-    ],
-    "JWT_VERIFY_EXPIRATION": True,
-    "JWT_LONG_RUNNING_REFRESH_TOKEN": True,
-}
-
 ENABLE_SSL = False
+
+
+# Allauth settings
+# Additional configuration settings
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_MAX_EMAIL_ADDRESSES = 1
+ACCOUNT_EMAIL_VERIFICATION ="optional"
 
 # SOcial auth settings
 SOCIAL_AUTH_JSONFIELD_ENABLED = True

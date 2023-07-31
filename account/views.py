@@ -1,254 +1,408 @@
+from datetime import datetime, timedelta
+
+from .new_tasks import login_attempt_event
+
 from django.conf import settings
-from django.contrib import messages
-from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView, PasswordResetConfirmView
-from django.contrib.messages.views import SuccessMessageMixin
-from django.core.mail import EmailMessage
-from django.core.cache import cache
-from django.http import JsonResponse
-from django.shortcuts import render, redirect
-from django.template.loader import render_to_string
-from django.urls import reverse_lazy
-from django.utils.http import urlsafe_base64_decode
-from django.utils.translation import gettext_lazy as _
-from django.views import generic, View
-from django.views.generic import DetailView, RedirectView, UpdateView
+from django.contrib.auth import (
+    login as auth_login,
+    logout as auth_logout,
+    get_user_model,
+    authenticate,
+)
+from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.utils import timezone
+from django.utils.crypto import get_random_string
 
-from core.mixins import CustomDispatchMixin, PageTitleMixin
+from rest_framework import status
+from rest_framework.authentication import get_authorization_header
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .broadcast import send_email_change_request
-from .events import *
-from .forms import UserRegistrationForm, UserUpdateForm
-from .tokens import account_activation_token, decode_token_check, encode_token
-from .decorators import user_is_active
-from .signals import user_verified
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import BlacklistMixin
+from rest_framework_simplejwt.exceptions import TokenError
+
+from core.mixins import ClientIPMixin
+
+from . import CustomerEvents
+
+from . import new_tasks as tasks
+from .cookie_auth import JWTAuthenticationFromCookie
+from .encryption import encrypt_token, decrypt_token
+from .forms import CustomLoginForm, CustomSignupForm
+from .mixins import VerifyLoggedInMixin, TokenDeleteMixin
+from .models import CustomUser as User
+from .send_email import send_verification_email, send_reset_password_email
+from .serializers import UserSerializer
+from .mixins import TokenExpirationMixin, TokenVerificationMixin
+from .validation_functions import (
+    validate_credentials_at_registration,
+)
 
 User = get_user_model()
 
 
-USER_MODEL_MISMATCH = """
-The registration view ({view}) is using the form class {form},
-but the model used by the form ({form_model}) is not your Django installation's user model ({user_model}).
-Please use a custom registration form class compatible with your custom user model.
-See django-registration's documentation on custom user models for more details.
-"""
-
-
-class ActivateAccountView(View):
-    """Activate a user's account by verifying their email address."""
-
-    def get(self, request, uidb64, token):
-        try:
-            uid = urlsafe_base64_decode(uidb64).decode()
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
-
-        if decode_token_check(uidb64, token):
-            user.is_active = True
-            user.save()
-            # Log the user in, redirect to their dashboard, or show a success message
-            messages.success(
-                request,
-                _("Your account has been successfully verified. You can now login."),
-            )
-            customer_user_account_verified_event(user=user)
-            return redirect("account:login")
-        else:
-            # Display an 'Invalid activation link' error message
-            return render(request, "djolowin/account/activation_invalid.html")
-
-
-class SignupView(generic.CreateView):
-    form_class = UserRegistrationForm
-    template_name = "djolowin/account/signup.html"
-
-    def get(self, request, *args, **kwargs):
-        form = self.form_class()
-        return render(request, self.template_name, {"form": form})
-
-    def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST)
+class SignupView(APIView, ClientIPMixin, TokenExpirationMixin):
+    def post(self, request):
+        ip_address = self.get_client_ip(request)
+        form = CustomSignupForm(data=request.data)
+        form_email = request.data.get("email")
+        tasks.signup_attempt_event(
+            payload={"ip_address": ip_address, "email": form_email}
+        )
+        validate_credentials_at_registration(request)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.is_active = False
-            user.save()
-            customer_user_signup_event(user=user)
-            customer_verification_email_sent_event(user=user)
-            return render(
-                request,
-                "djolowin/account/verification_email_sent.html",
-                {"email": user.email},
-            )
-        return render(request, self.template_name, {"form": form})
-
-
-user_signup_view = SignupView.as_view()
-
-
-class CustomLoginView(LoginView):
-    template_name = "djolowin/account/new_login.html"
-
-    def get_failed_login_attempts_key(self, username):
-        return f"failed_login_attempts_{username}"
-
-    def get_success_url(self):
-        user = self.request.user
-        customer_user_login_successful_event(user=user)
-        return reverse_lazy(
-            settings.LOGIN_REDIRECT_URL,
+            try:
+                user = form.save(request)
+                created_user = User.objects.filter_by_email(email=user.email).first()
+                created_user.save()
+                tasks.account_created_event(
+                    user_id=created_user.id,
+                    payload={
+                        "email": created_user.email,
+                        "status": str(status.HTTP_201_CREATED),
+                    },
+                )
+                send_verification_email(created_user)
+                return Response(
+                    {
+                        "message": "User registered successfully.",
+                        "user": user.email,
+                        "id": user.id,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+            except Exception as error:
+                return Response(
+                    {"error": str(error)}, status=status.HTTP_400_BAD_REQUEST
+                )
+        return Response(
+            {"message": "User registration failed.", "errors": form.errors},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    def form_valid(self, form):
-        username = form.cleaned_data.get("username")
-        # Reset the failed attempts count if the login is successful
-        failed_attempts_key = self.get_failed_login_attempts_key(username)
-        cache.delete(failed_attempts_key)
-        return super().form_valid(form)
 
-    def form_invalid(self, form):
-        username = form.cleaned_data.get("username")
-        # Get the current number of failed login attempts for the user
-        failed_attempts_key = self.get_failed_login_attempts_key(username)
-        failed_attempts_count = cache.get(failed_attempts_key, 0)
-        failed_attempts_count += 1
-        cache.set(
-            failed_attempts_key,
-            failed_attempts_count,
-            timeout=settings.LOGIN_ATTEMPTS_TIMEOUT,
-        )
-        # print(cache.get(failed_attempts_key))
-        # If the number of failed attempts exceeds the limit, block the login temporarily
-        if failed_attempts_count >= settings.MAX_LOGIN_ATTEMPTS:
-            return render(
-                self.request,
-                "djolowin/account/login_locked.html",
-                {"username": username},
+class HomeView(APIView):
+    authentication_classes = [JWTAuthenticationFromCookie]
+    permission_classes = []
+
+    def get(self, request):
+        if request.user.is_authenticated:
+            return Response(
+                {"message": "User is authenticated", "user": request.user.email},
+                status=status.HTTP_200_OK,)
+        return HttpResponse("Home page")
+
+
+class LoginAPIView(APIView, ClientIPMixin, VerifyLoggedInMixin):
+    authentication_classes = []
+    permission_classes = []
+    serializer_class = UserSerializer
+
+    def post(self, request):
+        logged_in_user = self.verify_logged_in_user(request)
+        if logged_in_user:
+            return Response(
+                {
+                    "message": "User already logged in",
+                    "user": logged_in_user.email,
+                    "user_id": logged_in_user.id,
+                },
+                status=status.HTTP_200_OK,
+                content_type="application/json",
             )
-        customer_user_login_failed_event(parameters=username)
-        return super().form_invalid(form)
+        ip_address = self.get_client_ip(request)
+        email = request.data.get("email")
+        form = CustomLoginForm(request, data=request.data)
+        login_attempt_event.delay(payload={"ip_address": ip_address, "email": email})
+
+        if form.is_valid():
+            user = authenticate(request, email=email, password=form.cleaned_data["password"])
+            user_id = user.id
+            auth_login(request, user)
+            refresh_token = RefreshToken.for_user(user)
+            access_token = refresh_token.access_token
+            tasks.access_token_generated_event(user_id=user_id)
+            tasks.refresh_token_generated_event(user_id=user_id)
+            response = Response(
+                {
+                    "message": "Login successful.",
+                    "user": user.email,
+                    "access_token": str(access_token),
+                    "refresh_token": str(refresh_token),
+                },
+                status=status.HTTP_200_OK,
+                content_type="application/json",
+            )
+            request.session["refresh_token"] = str(refresh_token)
+            response.set_cookie(settings.AUTH_COOKIE, str(access_token), httponly=True)
+
+            tasks.successful_login_event(
+                user_id=user_id,
+                payload={"ip_address": ip_address, "status": str(status.HTTP_200_OK)},
+            )
+            # publish_event(
+            #     event_data={
+            #         "event_code": UserEvents.SUCCESSFUL_LOGIN,
+            #         "user_id": user_id,
+            #         "email": user.email,
+            #         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            #     },
+            # )
+            return response
+        else:
+            tasks.failed_login_attempt_event(
+                payload={
+                    "ip_address": ip_address,
+                    "email": email,
+                    "status": str(status.HTTP_400_BAD_REQUEST),
+                }
+            )
+            return Response(
+                {"message": "Invalid email or password.", "errors": form.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+                content_type="application/json",
+            )
 
 
-user_login_view = CustomLoginView.as_view()
+class LogoutView(APIView, TokenDeleteMixin):
+    def post(self, request):
+        # Check if the user is authenticated
+        if request.user.is_authenticated:
+            # Logout the user, which invalidates the session and refresh token
+            auth_logout(request)
+            # Clear the session data, including the refresh token and access token
+            self.delete_tokens(request)
+            
+            response = Response(
+                {"message": "Logout successful."}, status=status.HTTP_200_OK
+            )
+            # Return a success response
+            return response
+        else:
+            # If the user is not authenticated, return an error response
+            return Response(
+                {"error": "User is not authenticated."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
 
-class RequestActivationEmailView(View):
-    template_name = "djolowin/account/request_activation_email.html"
+class ObtainNewAccessTokenView(
+    APIView,
+    TokenExpirationMixin,
+    TokenVerificationMixin,
+):
+    authentication_classes = []
+    permission_classes = []
 
-    def get(self, request, *args, **kwargs):
-        return render(request, self.template_name)
+    def get(self, request):
+        refresh_token_str = request.session.get("refresh_token")
+        if refresh_token_str is not None:
+            try:
+                if self.verify_refresh_token(refresh_token_str):
+                    refresh_token = RefreshToken(refresh_token_str)
+                    access_token = refresh_token.access_token
+                    payload_user_id = access_token.payload.get("user_id")
+                    expiration = self.get_token_expiration()
+                    json_expiration = datetime.timestamp(expiration)
+                    tasks.access_token_generated_event(
+                        user_id=payload_user_id, payload={"expiration": json_expiration}
+                    )
+                    response = Response(
+                        {"message": f"Access token refreshed {access_token} "},
+                        status=status.HTTP_200_OK,
+                    )
+                    response.set_cookie("access_token", str(access_token), httponly=True)
+                    return response
+                else:
+                    return Response(
+                        {"message": "Invalid or expired refresh token"},
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
+            except TokenError as e:
+                print(e)
+                return Response(
+                    {"message": "Invalid or expired refresh token"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+        else:
+            return Response(
+                {"message": "No refresh token in session. Please login again."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+
+class PasswordResetRequestAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        # Token expiration time in seconds (e.g., 1 hour)
+        TOKEN_EXPIRATION_SECONDS = 3600
+
+        email = request.data.get("email")
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"message": "No user found with this email address."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Generate a new password reset token
+        reset_token = get_random_string(length=32)
+
+        # Calculate the expiration timestamp
+        expiration_datetime = timezone.now() + timedelta(
+            seconds=TOKEN_EXPIRATION_SECONDS
+        )
+
+        # Save the reset token and timestamp in the user object
+        user.reset_password_token = reset_token
+        user.reset_password_token_expiration = expiration_datetime
+        user.save()
+
+        # Send the reset password link to the user's email
+        send_reset_password_email(user)
+
+        return Response(
+            {"message": "Password reset link sent to your email."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
 
     def post(self, request, *args, **kwargs):
-        user_email = request.POST.get("email")
-        user = User.objects.filter(email=user_email).first()
-        customer_new_verification_email_requested_event(user=user)
-
-        if user and not user.is_active:
-            # Generate the token
-            uid, token = encode_token(user)
-
-            # Send the activation email
-            subject = "Activate your account"
-            message = render_to_string(
-                "djolowin/account/activation_email.html",
-                {
-                    "user": user,
-                    "protocol": "http",
-                    "domain": request.get_host(),
-                    "uid": uid,
-                    "token": token,
-                },
-            )
-            email = EmailMessage(subject, message, to=[user.email])
-            email.send()
-            customer_new_verification_email_sent_event(user=user)
-            messages.success(
-                request, _("Activation email sent. Please check your inbox.")
-            )
-            return render(
-                request,
-                "djolowin/account/verification_email_sent.html",
-                {"email": user_email},
+        reset_token = kwargs["token"]
+        password = request.data.get("password")
+        if not password:
+            return Response(
+                {"message": "Password is required."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        messages.error(
-            request, _("Email not found or the account is already activated.")
-        )
-        return render(request, self.template_name)
-
-
-class UserDetailView(LoginRequiredMixin, DetailView):
-    model = User
-    template_name = "djolowin/account/user/user_detail.html"
-    fields = [
-        "username",
-        "email",
-        "first_name",
-        "last_name",
-        "country",
-        "profile_img",
-        "date_joined",
-    ]
-
-    def get_object(self, queryset=None):
-        return self.request.user
-
-
-user_detail_view = UserDetailView.as_view()
-
-
-class UserUpdateView(
-    PageTitleMixin, LoginRequiredMixin, SuccessMessageMixin, UpdateView
-):
-    template_name = "djolowin/account/user/user_form.html"
-    model = User
-    form_class = UserUpdateForm
-    page_title = _("Update account")
-    active_tab = "account"
-    success_message = _("Your account information has been successfully updated")
-
-    def get_object(self, queryset=None):
-        return self.request.user
-
-    def get_success_url(self):
-        session_user = self.request.user
-        assert session_user.is_authenticated
-        return session_user.get_absolute_url()
-
-    def form_valid(self, form):
         try:
-            old_user = User.objects.get(pk=self.request.user.pk)
+            user = User.objects.get(reset_password_token=reset_token)
         except User.DoesNotExist:
-            old_user = None
-        # We need to check if the email of the user has changed.
-        new_email = form.cleaned_data.get("email")
-        if new_email and old_user and old_user.email != new_email:
-            # If it has, we need to send a confirmation email to the old address
-            # in case the user has been hacked.
-            send_email_change_request(old_user, new_email)
-        messages.success(self.request, self.success_message)
-        return super().form_valid(form)
+            return Response(
+                {"message": "Invalid or expired reset token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # Check if the token has expired
+        current_datetime = timezone.now()
+        if (
+            user.reset_password_token_expiration
+            and current_datetime > user.reset_password_token_expiration
+        ):
+            return Response(
+                {"message": "Reset token has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-user_update_view = UserUpdateView.as_view()
+        # Reset the user's password and remove the reset token
+        user.set_password(password)
+        user.reset_password_token = None
+        user.reset_password_token_expiration = None
+        user.save()
 
-
-class UserRedirectView(LoginRequiredMixin, RedirectView):
-    permanent = False
-
-    def get_redirect_url(self):
-        return reverse_lazy(
-            settings.DJOLOWIN_ACCOUNTS_REDIRECT_URL,
-            kwargs={"username": self.request.user.username},
+        return Response(
+            {"message": "Password reset successfully."}, status=status.HTTP_200_OK
         )
 
 
-def validate_username(request):
-    username = request.GET.get("username", None)
-    data = {"is_taken": User.objects.filter(username__iexact=username).exists()}
-    print(data)
-    return JsonResponse(data)
+class RequestEmailVerificationView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        try:
+            user = User.objects.get(email=email)
+            if user.is_verified:
+                return Response(
+                    {"message": "Email already verified"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            else:
+                send_verification_email(user)
+                return Response(
+                    {"message": "Verification email sent"},
+                    status=status.HTTP_200_OK,
+                )
+        except User.DoesNotExist:
+            return Response(
+                {"message": "User does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
 
-user_redirect_view = UserRedirectView.as_view()
+class UserDetailView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        try:
+            user = request.user
+            serializer = UserSerializer(user)
+            return Response(serializer.data)
+        except User.DoesNotExist or AttributeError:
+            return Response(
+                {"message": "User does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+# --------------------------------------------------------------------------------
+class VerifyEmailView(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            user = User.objects.get(verification_token=kwargs["token"])
+            user.is_verified = True
+            user.verification_token = None
+            user.verification_token_expiration = None
+            user.save()
+            return Response({"message": "Email verified"}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(
+                {"message": "User does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class ValidateTokenView(APIView, TokenVerificationMixin, BlacklistMixin):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+        authorization_header = get_authorization_header(request).decode("utf-8")
+        if not authorization_header or not authorization_header.startswith("Bearer "):
+            return Response(
+                {"message": "No valid token provided"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        access_token = authorization_header.split(" ")[1]
+        refresh_token = request.session.get("refresh_token")
+
+        if not access_token or not refresh_token:
+            return Response(
+                {"message": "No token provided, please login"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if self.verify_access_token(access_token):
+            return Response(
+                {"message": "Valid access token"},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            if self.verify_refresh_token(refresh_token):
+                return redirect("authentication:obtain-token")
+            else:
+                return Response(
+                    {"message": "Invalid refresh token, please login"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
