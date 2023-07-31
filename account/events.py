@@ -1,242 +1,331 @@
 from typing import Optional
 
+from .models import CustomerEvent
 from . import CustomerEvents
-from .models import CustomUser, CustomerEvent
 
 
-def customer_user_signup_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "user registered" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.USER_SIGNUP,
-        user=user,
+def access_token_generated_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCESS_TOKEN_GENERATED,
+        payload=payload,
     )
 
 
-def customer_user_account_verified_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "user account verified" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.USER_ACCOUNT_VERIFIED,
-        user=user,
+def access_token_invalidated_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCESS_TOKEN_INVALIDATED,
+        payload=payload,
     )
 
 
-def customer_user_login_attempt_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "user login attempt" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.USER_LOGIN_ATTEMPT,
-        user=user,
+def access_token_expired_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCESS_TOKEN_EXPIRED,
+        payload=payload,
     )
 
 
-def customer_user_login_failed_event(*,parameters) -> CustomerEvent:
-    """Records the "user login failed" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.USER_LOGIN_FAILED,
-        parameters=parameters,
+def refresh_token_generated_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.REFRESH_TOKEN_GENERATED,
+        payload=payload,
     )
 
 
-def customer_user_login_successful_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "user login successful" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.USER_LOGIN_SUCCESSFUL,
-        user=user,
+def refresh_token_expired_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.REFRESH_TOKEN_EXPIRED,
+        payload=payload,
+    )
+
+def signup_attempt_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        event_type= CustomerEvents.SIGNUP_ATTEMPT,
+        payload=payload,
+    )
+
+def signup_attempt_failed_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        event_type= CustomerEvents.SIGNUP_ATTEMPT_FAILED,
+        payload=payload,
+    )
+
+def account_created_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_CREATED,
+        payload=payload,
     )
 
 
-def customer_account_deactivated_event(
-    *, user: CustomUser, account_id: int
-) -> CustomerEvent:
-    """Records the "account deactivated" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.USER_ACCOUNT_DEACTIVATED,
-        user=user,
-        parameters={"account_id": account_id},
+def account_verified_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_VERIFIED,
+        payload=payload,
     )
 
 
-def customer_password_reset_link_sent_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "password reset link sent" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.PASSWORD_RESET_LINK_SENT,
-        user=user,
+def account_deactivated_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_DEACTIVATED,
+        payload=payload,
     )
 
 
-def customer_password_reset_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "password reset" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.PASSWORD_RESET,
-        user=user,
+def account_reactivated_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_REACTIVATED,
+        payload=payload,
     )
 
 
-def customer_password_changed_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "password changed" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.PASSWORD_CHANGED,
-        user=user,
+def account_suspended_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_SUSPENDED,
+        payload=payload,
     )
 
 
-def customer_email_change_request_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "email change request" event for a given user."""
-    return CustomerEvent.objects.create(
+def admin_account_created_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ADMIN_ACCOUNT_CREATED,
+        payload=payload,
+    )
+
+
+def admin_account_verified_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ADMIN_ACCOUNT_VERIFIED,
+        payload=payload,
+    )
+
+
+def account_linked_to_google_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_LINKED_TO_GOOGLE,
+        payload=payload,
+    )
+
+
+def account_linked_to_facebook_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_LINKED_TO_FACEBOOK,
+        payload=payload,
+    )
+
+
+def account_linked_to_twitter_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.ACCOUNT_LINKED_TO_TWITTER,
+        payload=payload,
+    )
+
+
+def email_change_request_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
         event_type=CustomerEvents.EMAIL_CHANGE_REQUEST,
-        user=user,
+        payload=payload,
     )
 
 
-def customer_email_changed_event(
-    *, user: int, parameters: dict
-) -> Optional[CustomerEvent]:
-    return CustomerEvent.objects.create(
-        user=user, type=CustomerEvents.EMAIL_CHANGED, parameters=parameters
+def email_changed_by_user_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.EMAIL_CHANGED_BY_USER,
+        payload=payload,
     )
 
 
-def customer_phone_change_request_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "phone change request" event for a given user."""
-    return CustomerEvent.objects.create(
+def user_email_changed_by_admin_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.USER_EMAIL_CHANGED_BY_ADMIN,
+        payload=payload,
+    )
+
+
+def password_reset_link_sent_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.PASSWORD_RESET_LINK_SENT,
+        payload=payload,
+    )
+
+
+def password_reset_by_user_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.PASSWORD_RESET_BY_USER,
+        payload=payload,
+    )
+
+
+def password_changed_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.PASSWORD_CHANGED,
+        payload=payload,
+    )
+
+
+def phone_change_request_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
         event_type=CustomerEvents.PHONE_CHANGE_REQUEST,
-        user=user,
+        payload=payload,
     )
 
 
-def customer_phone_changed_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "phone changed" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.PHONE_CHANGED,
-        user=user,
+def phone_changed_by_user_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.PHONE_CHANGED_BY_USER,
+        payload=payload,
     )
 
 
-def customer_verification_email_sent_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "verification email sent" event for a given user."""
-    return CustomerEvent.objects.create(
+def user_phone_changed_by_admin_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.USER_PHONE_CHANGED_BY_ADMIN,
+        payload=payload,
+    )
+
+def login_attempt_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        event_type=CustomerEvents.LOGIN_ATTEMPT,
+        payload=payload,
+    )
+
+
+def failed_login_attempt_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.FAILED_LOGIN_ATTEMPT,
+        payload=payload,
+    )
+
+
+def successful_login_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.SUCCESSFUL_LOGIN,
+        payload=payload,
+    )
+
+
+def successful_logout_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.SUCCESFULL_LOGOUT,
+        payload=payload,
+    )
+
+
+def two_factor_enabled_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.TWO_FACTOR_ENABLED,
+        payload=payload,
+    )
+
+
+def two_factor_disabled_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.TWO_FACTOR_DISABLED,
+        payload=payload,
+    )
+
+
+def two_factor_code_sent_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.TWO_FACTOR_CODE_SENT,
+        payload=payload,
+    )
+
+
+def two_factor_code_resent_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.TWO_FACTOR_CODE_RESENT,
+        payload=payload,
+    )
+
+
+def two_factor_code_expired_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.TWO_FACTOR_CODE_EXPIRED,
+        payload=payload,
+    )
+
+
+def two_factor_failed_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.TWO_FACTOR_FAILED,
+        payload=payload,
+    )
+
+
+def two_factor_success_event(*, user_id: int, payload: Optional[dict] = None) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.TWO_FACTOR_SUCCESS,
+        payload=payload,
+    )
+
+
+def verification_email_requested_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
+        event_type=CustomerEvents.VERIFICATION_EMAIL_REQUESTED,
+        payload=payload,
+    )
+
+
+def verification_email_sent_event(
+    *, user_id: int, payload: Optional[dict] = None
+) -> None:
+    CustomerEvent.objects.create(
+        user_id=user_id,
         event_type=CustomerEvents.VERIFICATION_EMAIL_SENT,
-        user=user,
-    )
-
-
-def customer_new_verification_email_requested_event(
-    *, user: CustomUser
-) -> CustomerEvent:
-    """Records the "new verification email requested" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.NEW_VERIFICATION_EMAIL_REQUESTED,
-        user=user,
-    )
-
-
-def customer_new_verification_email_sent_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "new verification email sent" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.NEW_VERIFICATION_EMAIL_SENT,
-        user=user,
-    )
-
-
-def customer_currency_withdrawal_event(
-    *, user: CustomUser, amount: int
-) -> CustomerEvent:
-    """Records the "currency withdrawal" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.CURRENCY_WITHDRAWAL,
-        user=user,
-        parameters={"amount": amount},
-    )
-
-
-def customer_currency_deposit_event(*, user: CustomUser, amount: int) -> CustomerEvent:
-    """Records the "currency deposit" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.CURRENCY_DEPOSIT,
-        user=user,
-        parameters={"amount": amount},
-    )
-
-
-def customer_watched_ads_event(*, user: CustomUser) -> CustomerEvent:
-    """Records the "watched ads" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.WATCHED_ADS,
-        user=user,
-    )
-
-
-def customer_used_promo_code_event(
-    *, user: CustomUser, promo_code: str
-) -> CustomerEvent:
-    """Records the "used promo code" event for a given user."""
-    return CustomerEvent.objects.create(
-        event_type=CustomerEvents.USED_PROMO_CODE,
-        user=user,
-        parameters={"promo_code": promo_code},
-    )
-
-
-# def customer_placed_single_order_event(*, user: CustomUser, order: Order) -> Optional[CustomerEvent]:
-#     return CustomerEvent.objects.create(
-#         user=user, order=order, type=CustomerEvents.PLACED_SINGLE_ORDER
-#     )
-
-# def customer_placed_bundle_order_event(*, user: CustomUser, order: Order) -> Optional[CustomerEvent]:
-#     return CustomerEvent.objects.create(
-#         user=user, order=order, type=CustomerEvents.PLACED_BUNDLE_ORDER
-#     )
-
-
-# def customer_added_to_note_order_event(
-#     *, user: Optional[CustomUser], order: Order, message: str
-# ) -> CustomerEvent:
-#     return CustomerEvent.objects.create(
-#         user=user,
-#         order=order,
-#         type=CustomerEvents.NOTE_ADDED_TO_ORDER,
-#         parameters={"message": message},
-#     )
-
-
-# def customer_downloaded_a_digital_link_event(
-#     *, user: CustomUser, order_line: OrderLine
-# ) -> CustomerEvent:
-#     return CustomerEvent.objects.create(
-#         user=user,
-#         order=order_line.order,
-#         type=CustomerEvents.DIGITAL_LINK_DOWNLOADED,
-#         parameters={"order_line_pk": order_line.pk},
-#     )
-
-
-def customer_deleted_event(
-    *, staff_user: Optional[CustomUser], deleted_count: int = 1
-) -> CustomerEvent:
-    return CustomerEvent.objects.create(
-        user=staff_user,
-        order=None,
-        type=CustomerEvents.CUSTOMER_DELETED,
-        parameters={"count": deleted_count},
-    )
-
-
-def assigned_email_to_a_customer_event(
-    *, staff_user: Optional[CustomUser], new_email: str
-) -> CustomerEvent:
-    return CustomerEvent.objects.create(
-        user=staff_user,
-        order=None,
-        type=CustomerEvents.EMAIL_ASSIGNED,
-        parameters={"message": new_email},
-    )
-
-
-def assigned_name_to_a_customer_event(
-    *, staff_user: Optional[CustomUser], new_name: str
-) -> CustomerEvent:
-    return CustomerEvent.objects.create(
-        user=staff_user,
-        order=None,
-        type=CustomerEvents.NAME_ASSIGNED,
-        parameters={"message": new_name},
+        payload=payload,
     )

@@ -17,12 +17,16 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 
 app.conf.beat_schedule = {
-    "check_auction_end": {
-        "task": "auction.tasks.check_auction_end",
-        "schedule": timedelta(minutes=1),
-    },
-    "check_auction_endings": {
-        "task": "auction.tasks.check_auction_ending_soon",
-        "schedule": timedelta(minutes=30),
+    # "check_auction_end": {
+    #     "task": "auction.tasks.check_auction_end",
+    #     "schedule": timedelta(minutes=1),
+    # },
+    # "check_auction_endings": {
+    #     "task": "auction.tasks.check_auction_ending_soon",
+    #     "schedule": timedelta(minutes=30),
+    # },
+    'blacklist-expired-tokens': {
+        'task': 'account.tasks.blacklist_expired_tokens',
+        'schedule': timedelta(hours=8),  # Run every hour
     },
 }

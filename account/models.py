@@ -245,7 +245,7 @@ class CustomerEvent(models.Model):
         ],
     )
     user = models.ForeignKey(CustomUser, related_name="events", on_delete=models.CASCADE, null=True)
-    parameters = JSONField(_("Event parameters"), blank=True, default=dict)
+    payload = JSONField(_("Event parameters"), blank=True, default=dict, null=True)
     
     class Meta:
         ordering = ("date",)
