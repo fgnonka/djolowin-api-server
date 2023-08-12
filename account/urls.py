@@ -18,7 +18,7 @@ app_name = "account"
 urlpatterns = [
     path("home/", HomeView.as_view(), name="home"),
     path("login/", LoginAPIView.as_view(), name="login"),
-    path("logout/", LogoutView.as_view(), name=""),
+    path("logout/", LogoutView.as_view(), name="logout"),
     path("obtain-token/", ObtainNewAccessTokenView.as_view(), name="obtain-token"),
     path("password-reset/<str:token>/", PasswordResetAPIView.as_view(), name="password-reset"),
     path(

@@ -168,12 +168,12 @@ class CustomSignupForm(BaseSignupForm):
         dummy_user = User()
         user_username(dummy_user, self.cleaned_data.get("username"))
         user_email(dummy_user, self.cleaned_data.get("email"))
-        password = self.cleaned_data.get("password1")
+        password = self.cleaned_data.get("password2")
         if password:
             try:
                 get_adapter().clean_password(password, user=dummy_user)
             except forms.ValidationError as e:
-                self.add_error("password1", e)
+                self.add_error("password2", e)
 
         if (
             app_settings.SIGNUP_PASSWORD_ENTER_TWICE
@@ -183,7 +183,7 @@ class CustomSignupForm(BaseSignupForm):
             if self.cleaned_data["password1"] != self.cleaned_data["password2"]:
                 self.add_error(
                     "password2",
-                    _("You must type the same password each time."),
+                    _("Passwords do not match."),
                 )
         return self.cleaned_data
 

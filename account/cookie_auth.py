@@ -9,22 +9,25 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 
 
-
 class JWTAuthenticationFromCookie(authentication.BaseAuthentication):
     """
     An authentication plugin that authenticates requests through a JSON web
     token provided in a cookie.
     """
+
     www_authenticate_realm = "api"
     media_type = "application/json"
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user_model = get_user_model()
 
     def authenticate(self, request):
+        """Here, we vereify both the refresh token and the access token 
+        and return a user if both are valid."""
         raw_token = self.get_raw_token(request)
-        if raw_token is None:
+        refresh_token = self.get_refresh_token(request)
+        if raw_token is None or refresh_token is None:
             return None
 
         validated_token = self.get_validated_token(raw_token)
@@ -36,6 +39,11 @@ class JWTAuthenticationFromCookie(authentication.BaseAuthentication):
             api_settings.AUTH_HEADER_TYPES[0],
             self.www_authenticate_realm,
         )
+
+    def get_refresh_token(self, request):
+        """Extracts the refresh token from the given request HTTP cookie."""
+        refresh_token = request.COOKIES.get("refresh_token")
+        return refresh_token
 
     def get_raw_token(self, request):
         """

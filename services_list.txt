@@ -1,0 +1,29 @@
+User Service: Responsible for handling user registration, authentication, and profile management. (DONE)
+
+Team Service: Manages football teams, their players, and formations.
+
+Card Service: Handles the collection and trading of digital football cards.
+
+Auction Service: Allows users to auction their digital football cards and bid on cards from other users.
+
+Match Service: Handles the scheduling and management of virtual football matches.
+
+Score Service: Calculates and updates the scores of players and teams based on their performance in virtual matches.
+
+Wallet Service: Manages users' virtual currency (e.g., Sorare's Ethereum-based cryptocurrency) and transactions.
+
+Marketplace Service: Provides a platform for buying and selling digital football cards.
+
+Ranking Service: Ranks users and teams based on their performance in virtual matches and card collections.
+
+Notification Service: Sends notifications to users for various events like auction updates, match results, etc.
+
+Analytics Service: Collects and analyzes user data to provide insights into user behavior and preferences.
+
+Payment Service: Handles payment processing for purchases of virtual cards, currency, etc.
+
+Authentication Service: Centralized service for handling user authentication and generating access tokens.
+
+Image Service: Manages the storage and retrieval of images, such as player avatars and card designs.
+
+Admin Service: Provides administrative functionality to manage users, content, and configurations.
