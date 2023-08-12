@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class UserWallet(models.Model):
-    user = models.OneToOneField('account.CustomUser', on_delete=models.CASCADE, related_name='wallet')
+    user_id = models.IntegerField(unique=True)
     balance = models.PositiveIntegerField(default=0)
     reserved_balance = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -14,7 +14,7 @@ class UserWallet(models.Model):
         return self.balance - self.reserved_balance
 
     def __str__(self):
-        return f"{self.user} - {self.balance}"
+        return f"{self.user_id} - {self.balance}"
 
     class Meta:
         verbose_name = _("Wallet")

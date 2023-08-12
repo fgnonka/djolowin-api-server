@@ -21,7 +21,7 @@ User = get_user_model()
 def validate_credentials_at_registration(request):
     username = request.data.get("username")
     email = request.data.get("email")
-    password = request.data.get("password1")
+    password = request.data.get("password2")
     if email and username and password:
         validate_email_at_creation(email)
         validate_username_at_creation(username)
@@ -48,10 +48,6 @@ def check_similarities(username, email, password):
         raise serializers.ValidationError(_("Username and password must be different."))
     if email.split("@")[0] == password:
         raise serializers.ValidationError(_("Password and email must be different."))
-    if username in password:
-        raise serializers.ValidationError(
-            _("Password cannot contain username. Modify your password.")
-        )
     return True
 
 

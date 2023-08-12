@@ -5,28 +5,25 @@ from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
 from django.urls import reverse
 from django.utils import timezone
-from playercard.models import PlayerCard
-
-from account.models import CustomUser
-from wallet.models import UserWallet
 
 
-class Auction(models.Model):
-    card = models.ForeignKey(PlayerCard, on_delete=models.CASCADE)
-    owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+
+class CardAuctionWatcher(models.Model):
+    user_id = models.IntegerField()
+    auction = models.ForeignKey("CardAuction", on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+
+class CardAuction(models.Model):
+    card_id = models.IntegerField()
+    seller_id = models.IntegerField()
     starting_price = models.PositiveIntegerField(validators=[MinValueValidator(2000)])
     current_bid = models.PositiveIntegerField(default=0)
-    highest_bidder = models.ForeignKey(
-        CustomUser,
-        null=True,
-        blank=True,
-        related_name="highest_bidder",
-        on_delete=models.SET_NULL,
-    )
+    highest_bidder = models.IntegerField(null=True, blank=True)
     start_time = models.DateTimeField(auto_now_add=True)
     duration = models.PositiveIntegerField(default=1)
     end_time = models.DateTimeField()
-    watchers = models.ManyToManyField(CustomUser, related_name="watched_auctions")
+    watchers = models.ManyToManyField(CardAuctionWatcher, blank=True, related_name="watchers")
     auction_ended = models.BooleanField(default=False)
     sold = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -34,12 +31,12 @@ class Auction(models.Model):
     class Meta:
         ordering = ["-start_time"]
         constraints = [
-            UniqueConstraint(fields=["card", "owner","start_time"], name="unique_auction")
+            UniqueConstraint(fields=["card_id", "seller_id","start_time"], name="unique_auction")
         ]
         
     @property
     def already_active(self):
-        existing_active_auction = Auction.objects.filter(
+        existing_active_auction = CardAuction.objects.filter(
             Q(card=self.card) & Q(owner=self.owner) & Q(end_time__gte=timezone.now())
         )
         if existing_active_auction:
@@ -72,32 +69,18 @@ class Auction(models.Model):
     def __str__(self):
         return f"{self.card} - Auction by {self.owner}"
 
-    def accept_bid(self, user, amount):
-        wallet = UserWallet.objects.get(user=user)
-        if self.is_active():
-            if (
-                amount > self.starting_price
-                and amount > self.current_bid
-                and wallet.available_balance >= amount
-            ):
-                wallet.reserved_balance += amount
-                self.current_bid = amount
-                self.highest_bidder = user
-                wallet.save()
-                return True
-        return False
     
     def get_absolute_url(self):
         return reverse("auction:auction_detail", kwargs={"pk": self.pk})
 
     def get_highest_bid(self):
         if self.current_bid:
-            return Bid.objects.filter(auction=self).order_by("-amount").first()
+            return CardAuctionBid.objects.filter(auction=self).order_by("-amount").first()
 
 
-class Bid(models.Model):
-    auction = models.ForeignKey(Auction, on_delete=models.CASCADE)
-    bidder = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+class CardAuctionBid(models.Model):
+    auction = models.ForeignKey(CardAuction, on_delete=models.CASCADE)
+    bidder_id = models.IntegerField()
     amount = models.DecimalField(max_digits=10, decimal_places=0)
     timestamp = models.DateTimeField(auto_now_add=True)
 

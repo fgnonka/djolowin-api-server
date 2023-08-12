@@ -10,17 +10,10 @@ class CurrencyPackage(models.Model):
     """This model is used to store the currency packages that will be available for purchase."""
 
     name = models.CharField(max_length=255)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    og_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True)
+    current_price = models.DecimalField(max_digits=10, decimal_places=2)
+    regular_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True)
     stripe_price = models.IntegerField(blank=True)
     in_app_currency = models.IntegerField()
-    purchases = models.ManyToManyField(
-        User,
-        related_name=_("currency_package_purchases"),
-        related_query_name=_("currency_package_purchase"),
-        blank=True,
-    )
-    usage_count = models.PositiveIntegerField(default=0)
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):

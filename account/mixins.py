@@ -1,15 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.conf import settings
 
-from rest_framework.authentication import get_authorization_header
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
+# from .cookie_auth import JWTAuthenticationFromCookie
 from .models import CustomUser
-from .encryption import decrypt_token
+
+
+# class JWTAuthenticationFromCookieMixin(JWTAuthenticationFromCookie):
+#     authentication_classes = [JWTAuthenticationFromCookie]
+
 
 class TokenExpirationMixin:
     def get_token_expiration(self) -> datetime:
@@ -45,8 +48,9 @@ class VerifyLoggedInMixin(TokenExpirationMixin, TokenVerificationMixin):
         access_token = request.COOKIES.get(settings.AUTH_COOKIE)
         if not access_token:
             return None
-        if request.session.get("refresh_token"):
-            encrypted_refresh_token = request.session["refresh_token"]
+        refresh_token = request.COOKIES.get("refresh_token")
+        if refresh_token:
+            encrypted_refresh_token = refresh_token
             # Check if both access token and refresh token are valid
             if self.verify_access_token(access_token) and self.verify_refresh_token(
                 encrypted_refresh_token

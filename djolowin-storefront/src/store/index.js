@@ -1,4 +1,6 @@
 import { createStore } from 'vuex'
+import account from '@/modules/account/store/account';
+import football from '@/modules/sports/football/store/football';
 
 export default createStore({
   state: {
@@ -10,5 +12,7 @@ export default createStore({
   actions: {
   },
   modules: {
+    account,
+    football,
   }
 })

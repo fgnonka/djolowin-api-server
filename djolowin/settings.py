@@ -26,7 +26,7 @@ AUTH_USER_MODEL = "account.CustomUser"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = str(os.environ.get("SECRET_KEY"))
-ENCRYPT_KEY = (os.environ.get("ENCRYPT_KEY"))
+ENCRYPT_KEY = os.environ.get("ENCRYPT_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
     # Third party apps
-    'allauth',
+    "allauth",
     "celery",
     "corsheaders",
     "django_countries",
@@ -65,19 +65,18 @@ INSTALLED_APPS = [
     "analytics",
     "app_currency",
     "auction",
-    "base",
-    "bundle",
-    "channel",
-    "collection",
-    "communication",
+    "card",
     "core",
     "djolowin_graphql",
     "djolowin_profile",
+    "marketplace",
+    "notification",
     "order",
     "permission",
-    "playercard",
     "product",
+    "ranking",
     "reward",
+    "sports",
     "transaction",
     "wallet",
 ]
@@ -99,8 +98,6 @@ ROOT_URLCONF = "djolowin.urls"
 
 
 context_processors = [
-    "communication.notifications.context_processors.notifications",
-    "wallet.context_processors.user_balance",
     "django.template.context_processors.debug",
     "django.template.context_processors.request",
     "django.contrib.auth.context_processors.auth",
@@ -131,15 +128,54 @@ SITE_ID = 1
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": str(os.environ.get("DB_NAME")),
-        "USER": str(os.environ.get("DB_USER")),
-        "PASSWORD": str(os.environ.get("DB_PASSWORD")),
-        "HOST": str(os.environ.get("DB_HOST")),
-        "PORT": str(os.environ.get("DB_PORT")),
-    }
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/primary_db.sqlite3",
+    },
+    "auction_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/auction_db.sqlite3",
+    },
+    "card_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/card_db.sqlite3",
+    },
+    "vcurrency_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/vcurrency_db.sqlite3",
+    },
+    "notification_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/notification_db.sqlite3",
+    },
+    "product_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/product_db.sqlite3",
+    },
+    "sports_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/sports_db.sqlite3",
+    },
+    "transaction_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/transaction_db.sqlite3",
+    },
+    "wallet_db": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db/wallet_db.sqlite3",
+    },
 }
 
+DATABASE_ROUTERS = [
+    "app_currency.routers.AppCurrencyRouter",
+    "auction.routers.AuctionRouter",
+    "card.routers.CardRouter",
+    "notification.routers.NotificationRouter",
+    "product.routers.ProductRouter",
+    "sports.routers.SportsRouter",
+    "reward.routers.RewardRouter",
+    "transaction.routers.TransactionRouter",
+    "wallet.routers.WalletRouter",
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -162,12 +198,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # JWT settings
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "account.cookie_auth.JWTAuthenticationFromCookie",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
 }
 
 AUTH_COOKIE = "access_token"
-JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=10)
 JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=1)
 
 SIMPLE_JWT = {
@@ -177,9 +213,10 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": str(os.environ.get("SIGNING_JWT_KEY")),
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-    'TOKEN_BLACKLIST_ENABLED': True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_BLACKLIST_ENABLED": True,
 }
 
 
@@ -195,9 +232,7 @@ LANGUAGE_CODE = "en"
 LANGUAGES = CORE_LANGUAGES
 
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_TZ = True
 
 
@@ -249,7 +284,7 @@ DEFAULT_CURRENCY_CODE_LENGTH = 3
 DJOLOWIN_PLAYERCARD_PAGINATE_BY = 8
 DJOLOWIN_NOTIFICATIONS_PER_PAGE = 20
 DJOLOWIN_SAVE_SENT_EMAILS_TO_DB = True
-LOGIN_ATTEMPTS_TIMEOUT = 60 * 5 # 5 minutes
+LOGIN_ATTEMPTS_TIMEOUT = 60 * 5  # 5 minutes
 MAX_LOGIN_ATTEMPTS = 5
 
 # Email server configuration
@@ -280,12 +315,12 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 stripe.api_key = STRIPE_SECRET_KEY
 
 # CORS settings
-# CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:*",
-# ]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:*",
+]
 CORS_ORIGIN_ALLOW_ALL = True
-# CORS_ORIGIN_WHITELIST = ("http://localhost:8080",)
+CORS_ORIGIN_WHITELIST = ("http://localhost:8080",)
 
 JWT_EXPIRE = 60 * 60 * 24 * 7  # 7 days
 
@@ -315,7 +350,7 @@ ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_MAX_EMAIL_ADDRESSES = 1
-ACCOUNT_EMAIL_VERIFICATION ="optional"
+ACCOUNT_EMAIL_VERIFICATION = "optional"
 
 # SOcial auth settings
 SOCIAL_AUTH_JSONFIELD_ENABLED = True

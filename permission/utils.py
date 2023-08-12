@@ -25,27 +25,6 @@ def one_of_permissions_or_auth_filter_required(
     granted_by_permissions = False
     granted_by_authorization_filters = False
 
-    # TODO: move this function from graphql to core
-    from djolowin_graphql.utils import get_user_or_app_from_context
-
-    requestor = get_user_or_app_from_context(context)
-
-    if requestor and permissions:
-        perm_checks_results = []
-        for permission in permissions:
-            perm_checks_results.append(requestor.has_perm(permission))
-        granted_by_permissions = any(perm_checks_results)
-
-    if authorization_filters:
-        auth_filters_results = []
-        for p in authorization_filters:
-            perm_fn = resolve_authorization_filter_fn(p)
-            if perm_fn:
-                res = perm_fn(context)
-                auth_filters_results.append(bool(res))
-        granted_by_authorization_filters = any(auth_filters_results)
-
-    return granted_by_permissions or granted_by_authorization_filters
 
 
 def permission_required(

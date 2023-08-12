@@ -1,5 +1,5 @@
 <template>
-	<div id="wrapper">
+	<div id="wrapper" class="wrapping">
 		<nav class="navbar navbar-expand-lg navbar-dark bg-dark rounded" aria-label="Eleventh navbar example">
 			<div class="container-fluid">
 				<a class="navbar-brand" href="/">
@@ -74,7 +74,8 @@
 							</div>
 						</li>
 						<li class="nav-item">
-							<a href="#" class="nav-link"><i class="fa fa-fw fa-power-off"></i>Log Out</a>
+							<a href="#" class="nav-link" @click="triggerLogout"><i class="fa fa-fw fa-power-off"></i>Log
+								Out</a>
 						</li>
 					</ul>
 					<form class="d-flex" role="search">
@@ -83,10 +84,10 @@
 				</div>
 			</div>
 		</nav>
-		
+		<router-view></router-view>
 	</div>
-	<router-view/>
 </template>
+
 
 <style>
 .loading-spinner {
@@ -99,8 +100,29 @@
 .spinner {
 	color: aliceblue;
 }
+
+.wrapping {
+	margin: auto;
+	max-width: 1200px;
+	min-height: 100vh;
+}
 </style>
 
+<script>
+import { mapActions } from 'vuex';
+
+
+export default {
+	name: "App",
+	methods: {
+		...mapActions('account', ['logout']), // Map the logout action from the auth Vuex module
+		async triggerLogout() {
+			await this.logout(); // Call the logout action
+			this.$router.push({ name: 'Login' })
+		},
+	},
+};
+</script>
 
 
 

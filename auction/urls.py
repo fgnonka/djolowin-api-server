@@ -1,16 +1,11 @@
 from django.urls import path
-from . import views
+from .views import CardAuctionDetailView, CreateCardAuctionView, ActiveCardAuctionListView, OwnedCardAuctionListView
 
 app_name = "auction"
 
 urlpatterns = [
-    path("all/", views.ActiveAuctionListView.as_view(), name="active_auctions"),
-    path("create/<int:card_pk>/", views.create_auction, name="create_auction"),
-    path("<int:pk>/", views.AuctionDetailView.as_view(), name="auction_detail"),
-    path("owned/", views.UserAuctionView.as_view(), name="owned_auctions"),
-    path(
-        "toggle_watcher/",
-        views.toggle_watch,
-        name="toggle_watcher",
-    ),
+    path("all/", ActiveCardAuctionListView.as_view(), name="all_auctions"),
+    path("create/", CreateCardAuctionView.as_view(), name="create_auction"),
+    path("<int:pk>/", CardAuctionDetailView.as_view(), name="auction_detail"),
+    path("owned/", OwnedCardAuctionListView.as_view(), name="owned_auctions"),
 ]

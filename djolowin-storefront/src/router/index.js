@@ -1,31 +1,42 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import PlayerList from '../views/PlayerList.vue'
+import {createRouter, createWebHistory} from 'vue-router';
+import accountRoutes from '@/modules/account/routes.js';
+import footballRoutes from '@/modules/sports/football/routes.js';
+import store from '@/store/index.js';
 
 const routes = [
+  ...accountRoutes,
+  ...footballRoutes,
   {
     path: '/',
-    name: 'home',
-    component: HomeView
+    name: 'Welcome',
+    component: () => import ('../views/WelcomeView.vue'),
   },
-  {
-    path: '/players',
-    name: 'players',
-    component: PlayerList
-  },
-  {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
-  },
-]
+];
 
-const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
-  routes
-})
+const router = createRouter ({
+  history: createWebHistory (process.env.BASE_URL),
+  routes,
+});
 
-export default router
+router.beforeEach ((to, from, next) => {
+  if (to.matched.some (record => record.meta.requiresAuth)) {
+    if (!store.getters['account/isTokenActive']) {
+      next ({
+        name: 'Login',
+        query: {redirect: to.fullPath},
+      });
+    } else {
+      next ();
+    }
+  } else if (to.matched.some (record => record.meta.requiresLoggedOut)) {
+    if (store.getters['account/isTokenActive']) {
+      next ({ name: 'Home' });
+    } else {
+      next ();
+    }
+  } else {
+    next ();
+  }
+});
+
+export default router;

@@ -3,7 +3,7 @@ from django.conf import settings
 from django.urls import reverse
 
 def send_verification_email(user):
-    verification_link = reverse('authentication:verify-email', args=[str(user.verification_token)])
+    verification_link = reverse('account:verify-email', args=[str(user.verification_token)])
 
     subject = 'Verify Your Email'
     message = f'Hi {user.username}, please click the link below to verify your email:\n\n{settings.BASE_URL}{verification_link}'
@@ -15,7 +15,7 @@ def send_verification_email(user):
 
 def send_reset_password_email(user):
     # Define the reset password link URL (replace example.com with your domain)
-    reset_link = reverse('authentication:password-reset', args=[str(user.reset_password_token)])
+    reset_link = reverse('account:password-reset', args=[str(user.reset_password_token)])
 
     # Send the email to the user
     subject="Password Reset",

@@ -14,29 +14,31 @@ from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from rest_framework.authentication import get_authorization_header
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.tokens import BlacklistMixin
+from rest_framework_simplejwt.tokens import RefreshToken, BlacklistMixin
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
 
 from core.mixins import ClientIPMixin
 
 from . import CustomerEvents
 
-from . import new_tasks as tasks
-from .cookie_auth import JWTAuthenticationFromCookie
-from .encryption import encrypt_token, decrypt_token
+from . import tasks
 from .forms import CustomLoginForm, CustomSignupForm
 from .mixins import VerifyLoggedInMixin, TokenDeleteMixin
 from .models import CustomUser as User
 from .send_email import send_verification_email, send_reset_password_email
 from .serializers import UserSerializer
-from .mixins import TokenExpirationMixin, TokenVerificationMixin
+from .mixins import (
+    TokenExpirationMixin,
+    TokenVerificationMixin,
+    # JWTAuthenticationFromCookieMixin,
+)
 from .validation_functions import (
     validate_credentials_at_registration,
 )
@@ -45,7 +47,10 @@ User = get_user_model()
 
 
 class SignupView(APIView, ClientIPMixin, TokenExpirationMixin):
+    authentication_classes = []
+
     def post(self, request):
+        print(request.data)
         ip_address = self.get_client_ip(request)
         form = CustomSignupForm(data=request.data)
         form_email = request.data.get("email")
@@ -85,15 +90,19 @@ class SignupView(APIView, ClientIPMixin, TokenExpirationMixin):
 
 
 class HomeView(APIView):
-    authentication_classes = [JWTAuthenticationFromCookie]
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
     def get(self, request):
         if request.user.is_authenticated:
             return Response(
                 {"message": "User is authenticated", "user": request.user.email},
-                status=status.HTTP_200_OK,)
-        return HttpResponse("Home page")
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {"message": "User is not authenticated"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
 
 
 class LoginAPIView(APIView, ClientIPMixin, VerifyLoggedInMixin):
@@ -102,6 +111,7 @@ class LoginAPIView(APIView, ClientIPMixin, VerifyLoggedInMixin):
     serializer_class = UserSerializer
 
     def post(self, request):
+        print(request.session.items())
         logged_in_user = self.verify_logged_in_user(request)
         if logged_in_user:
             return Response(
@@ -119,7 +129,9 @@ class LoginAPIView(APIView, ClientIPMixin, VerifyLoggedInMixin):
         login_attempt_event.delay(payload={"ip_address": ip_address, "email": email})
 
         if form.is_valid():
-            user = authenticate(request, email=email, password=form.cleaned_data["password"])
+            user = authenticate(
+                request, email=email, password=form.cleaned_data["password"]
+            )
             user_id = user.id
             auth_login(request, user)
             refresh_token = RefreshToken.for_user(user)
@@ -136,21 +148,14 @@ class LoginAPIView(APIView, ClientIPMixin, VerifyLoggedInMixin):
                 status=status.HTTP_200_OK,
                 content_type="application/json",
             )
-            request.session["refresh_token"] = str(refresh_token)
+            response.set_cookie("refresh_token", str(refresh_token), httponly=True)
             response.set_cookie(settings.AUTH_COOKIE, str(access_token), httponly=True)
 
             tasks.successful_login_event(
                 user_id=user_id,
                 payload={"ip_address": ip_address, "status": str(status.HTTP_200_OK)},
             )
-            # publish_event(
-            #     event_data={
-            #         "event_code": UserEvents.SUCCESSFUL_LOGIN,
-            #         "user_id": user_id,
-            #         "email": user.email,
-            #         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            #     },
-            # )
+
             return response
         else:
             tasks.failed_login_attempt_event(
@@ -175,7 +180,7 @@ class LogoutView(APIView, TokenDeleteMixin):
             auth_logout(request)
             # Clear the session data, including the refresh token and access token
             self.delete_tokens(request)
-            
+
             response = Response(
                 {"message": "Logout successful."}, status=status.HTTP_200_OK
             )
@@ -197,8 +202,8 @@ class ObtainNewAccessTokenView(
     authentication_classes = []
     permission_classes = []
 
-    def get(self, request):
-        refresh_token_str = request.session.get("refresh_token")
+    def post(self, request):
+        refresh_token_str = request.data.get("refresh_token")
         if refresh_token_str is not None:
             try:
                 if self.verify_refresh_token(refresh_token_str):
@@ -211,23 +216,27 @@ class ObtainNewAccessTokenView(
                         user_id=payload_user_id, payload={"expiration": json_expiration}
                     )
                     response = Response(
-                        {"message": f"Access token refreshed {access_token} "},
+                        {
+                            "message": f"Access token refreshed {access_token} ",
+                            "access_token": str(access_token),
+                        },
                         status=status.HTTP_200_OK,
                     )
-                    response.set_cookie("access_token", str(access_token), httponly=True)
                     return response
                 else:
+                    print("Invalid or expired refresh token")
                     return Response(
                         {"message": "Invalid or expired refresh token"},
                         status=status.HTTP_401_UNAUTHORIZED,
                     )
             except TokenError as e:
-                print(e)
+                print("Invalid or expired refresh token 2")
                 return Response(
                     {"message": "Invalid or expired refresh token"},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
         else:
+            print("No refresh token in session")
             return Response(
                 {"message": "No refresh token in session. Please login again."},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -340,12 +349,16 @@ class RequestEmailVerificationView(APIView):
 
 
 class UserDetailView(APIView):
-    authentication_classes = []
     permission_classes = []
 
     def get(self, request):
         try:
             user = request.user
+            if not user.is_authenticated:
+                return Response(
+                    {"message": "You are not authenticated"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
             serializer = UserSerializer(user)
             return Response(serializer.data)
         except User.DoesNotExist or AttributeError:
@@ -376,16 +389,9 @@ class ValidateTokenView(APIView, TokenVerificationMixin, BlacklistMixin):
     authentication_classes = []
     permission_classes = []
 
-    def post(self, request, *args, **kwargs):
-        authorization_header = get_authorization_header(request).decode("utf-8")
-        if not authorization_header or not authorization_header.startswith("Bearer "):
-            return Response(
-                {"message": "No valid token provided"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        access_token = authorization_header.split(" ")[1]
-        refresh_token = request.session.get("refresh_token")
+    def get(self, request, *args, **kwargs):
+        access_token = request.COOKIES.get("access_token")
+        refresh_token = request.COOKIES.get("refresh_token")
 
         if not access_token or not refresh_token:
             return Response(
@@ -400,7 +406,7 @@ class ValidateTokenView(APIView, TokenVerificationMixin, BlacklistMixin):
             )
         else:
             if self.verify_refresh_token(refresh_token):
-                return redirect("authentication:obtain-token")
+                return redirect("account:obtain-token")
             else:
                 return Response(
                     {"message": "Invalid refresh token, please login"},
