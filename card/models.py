@@ -31,10 +31,10 @@ class PlayerCard(models.Model):
     player_id = models.IntegerField()
     player_name = models.CharField(max_length=255)
     rarity = models.ForeignKey(
-        CardRarity, on_delete=models.PROTECT, null=True, blank=True
+        CardRarity, on_delete=models.CASCADE, null=True, blank=True
     )
     season = models.CharField(_("Season"), max_length=10, default="2024")
-    owner_id = models.IntegerField(_("Owner"), null=True, blank=True)
+    owner_id = models.IntegerField(_("Owner Id"), null=True, blank=True)
     value = models.DecimalField(_("Value"), max_digits=10, decimal_places=2)
     number_likes = models.PositiveIntegerField(_("Likes"), default=0)
     index = models.PositiveIntegerField(_("Index"), default=0)
@@ -61,19 +61,26 @@ class PlayerCard(models.Model):
 
     def get_absolute_url(self):
         return reverse("card:playercard-detail", kwargs={"slug": self.pk})
-
+    
+    @property
+    def get_card_details(self):
+        details = {
+            "card_id": self.pk,
+            "player_id": self.player_id,
+            "player_name": self.player_name,
+            "rarity_name": self.rarity.name,
+            "index": self.index,
+            "season": self.season,
+        }
+        return details
+    
     @property
     def get_player_name(self):
         return self.player_name
 
-    def get_playercard_id(self):
-        return self.id
-
     @property
-    def rarities(self):
-        return [(r.id, r.name) for r in CardRarity.objects.all()]
-
-    RARITIES = rarities
+    def card_rarity_name(self):
+        return self.rarity.name
 
     @property
     def get_total_card_index(self):

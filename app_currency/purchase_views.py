@@ -10,9 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from account.models import CustomUser
 from transaction.utils import create_currency_purchase_transaction
-from wallet.models import UserWallet
+from custom_user.models import UserWallet
 from .models import CurrencyPackage
 
 
@@ -96,7 +95,7 @@ def stripe_webhook(request):
             # ...
             print(session)
         # Get the user and currency package from the session (you may need to adjust this based on your implementation)
-            session_user = CustomUser.objects.get(email=session["customer_email"])
+            session_user = "CustomUser.objects.get(email=session)"
             currency_package = CurrencyPackage.objects.get(
             price=session["amount_total"] / 100
         )

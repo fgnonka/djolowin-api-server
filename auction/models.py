@@ -6,7 +6,7 @@ from django.db.models.constraints import UniqueConstraint
 from django.urls import reverse
 from django.utils import timezone
 
-
+from shared_models.models import PlayerCard
 
 class CardAuctionWatcher(models.Model):
     user_id = models.IntegerField()
@@ -34,6 +34,12 @@ class CardAuction(models.Model):
             UniqueConstraint(fields=["card_id", "seller_id","start_time"], name="unique_auction")
         ]
         
+    @property
+    def get_card_details(self):
+        card = PlayerCard.objects.get(pk=self.card_id)
+        details = card.get_card_details
+        return details
+    
     @property
     def already_active(self):
         existing_active_auction = CardAuction.objects.filter(
@@ -67,7 +73,7 @@ class CardAuction(models.Model):
         return self.start_time <= now and self.end_time >= now
 
     def __str__(self):
-        return f"{self.card} - Auction by {self.owner}"
+        return f"{self.card_id} - Auction by {self.seller_id}"
 
     
     def get_absolute_url(self):

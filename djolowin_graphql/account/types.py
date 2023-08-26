@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from promise import Promise
 
 
-from account import models
+from accounts import models
 
 
 class AddressType(DjangoObjectType):

@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djolowin.settings")
 django.setup()
 
-from account.models import CustomUser
+from custom_user.models import CustomUser
 from sports.models import Player
 from card.models import PlayerCard, CardRarity
 
@@ -30,10 +30,10 @@ def random_image():
 
 def create_playercards():
     for player in players:
-        for i in range(101):
+        for i in range(1):
             owner = None
-            common_rarity = CardRarity.objects.get(name="common")
-            common_price = 10000
+            common_rarity = CardRarity.objects.get(name="unique")
+            common_price = 40000
             playercard_common = PlayerCard(
                 player_id=player.id,
                 player_name = player.name,
@@ -41,8 +41,8 @@ def create_playercards():
                 for_sale=True,
                 owner_id=owner,
                 value=common_price,
-                index=i,
-                slug=slugify(f"{player.name}-{common_rarity}-{i}"),
+                index=1,
+                slug=slugify(f"{player.name}-{common_rarity}-1"),
                 number_likes=random.randint(0, 100),
             )
             playercard_common.save()

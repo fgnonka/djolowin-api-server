@@ -1,4 +1,4 @@
-from wallet.models import UserWallet
+from userwal.models import UserWallet
 from collection.models import CompletedCollection
 from collection.signals import collection_completed
 

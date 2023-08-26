@@ -1,5 +1,10 @@
 from django.urls import path
-from .views import CardAuctionDetailView, CreateCardAuctionView, ActiveCardAuctionListView, OwnedCardAuctionListView
+from .views import (
+    CardAuctionDetailView,
+    CreateCardAuctionView,
+    ActiveCardAuctionListView,
+    OwnedCardAuctionListView,
+)
 
 app_name = "auction"
 

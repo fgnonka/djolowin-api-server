@@ -32,7 +32,10 @@ class TeamDetailAPIView(generics.RetrieveAPIView):
     serializer_class = TeamSerializer
     
     def get_object(self):
-        return Team.objects.get(slug=self.kwargs["slug"])
+        team = Team.objects.get(slug=self.kwargs["slug"])
+        player_list = Player.objects.filter(team=team)
+        team.players = player_list
+        return team
 
 class PlayerListByTeamApiView(generics.ListAPIView):
     serializer_class = PlayerSerializer
