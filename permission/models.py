@@ -115,7 +115,7 @@ class PermissionsMixin(models.Model):  # noqa: D205, D212, D400, D415
         ),
     )
     groups = models.ManyToManyField(
-        "account.Group",
+        "custom_user.Group",
         verbose_name=_("groups"),
         blank=True,
         help_text=_(

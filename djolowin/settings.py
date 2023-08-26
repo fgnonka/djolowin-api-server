@@ -22,7 +22,7 @@ APPEND_SLASH = False
 # `account.User` tells Django we are referring to the `CustomUser` model in
 # the `account` module. This module is registered above in a setting
 # called `INSTALLED_APPS`.
-AUTH_USER_MODEL = "account.CustomUser"
+AUTH_USER_MODEL = "custom_user.CustomUser"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = str(os.environ.get("SECRET_KEY"))
@@ -33,7 +33,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "*",
 ]
-ALLOWED_CLIENT_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_CLIENT_HOSTS = ["*"]
 
 # Application definition
 
@@ -48,8 +48,12 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     # Third party apps
     "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "celery",
     "corsheaders",
+    "custom_user",
     "django_countries",
     "django_extensions",
     "django_filters",
@@ -57,11 +61,10 @@ INSTALLED_APPS = [
     "graphene_django",
     "phonenumber_field",
     "rest_framework",
+    "rest_framework.authtoken",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
-    "social_django",
     # local apps
-    "account",
     "analytics",
     "app_currency",
     "auction",
@@ -78,21 +81,17 @@ INSTALLED_APPS = [
     "reward",
     "sports",
     "transaction",
-    "wallet",
 ]
 
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1"]
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1", "http://192.168.1.190"]
 
 ROOT_URLCONF = "djolowin.urls"
 
@@ -102,8 +101,6 @@ context_processors = [
     "django.template.context_processors.request",
     "django.contrib.auth.context_processors.auth",
     "django.contrib.messages.context_processors.messages",
-    "social_django.context_processors.backends",
-    "social_django.context_processors.login_redirect",
 ]
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 TEMPLATES = [
@@ -159,10 +156,6 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db/transaction_db.sqlite3",
     },
-    "wallet_db": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db/wallet_db.sqlite3",
-    },
 }
 
 DATABASE_ROUTERS = [
@@ -174,7 +167,6 @@ DATABASE_ROUTERS = [
     "sports.routers.SportsRouter",
     "reward.routers.RewardRouter",
     "transaction.routers.TransactionRouter",
-    "wallet.routers.WalletRouter",
 ]
 
 # Password validation
@@ -203,7 +195,7 @@ REST_FRAMEWORK = {
 }
 
 AUTH_COOKIE = "access_token"
-JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=10)
+JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
 JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=1)
 
 SIMPLE_JWT = {
@@ -213,7 +205,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": str(os.environ.get("SIGNING_JWT_KEY")),
-    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_TYPES": ("JWT",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM": "token_type",
     "TOKEN_BLACKLIST_ENABLED": True,
@@ -222,7 +214,6 @@ SIMPLE_JWT = {
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
-    "social_core.backends.google.GoogleOAuth2",
 ]
 
 # Internationalization
@@ -266,7 +257,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 LOGOUT_REDIRECT_URL = "account:login"
-LOGIN_REDIRECT_URL = "base:home"
+LOGIN_REDIRECT_URL = "http://localhost:8080/home"
 LOGIN_URL = "account:login"
 LOGOUT_URL = "account:logout"
 
@@ -274,6 +265,7 @@ APPEND_SLASH = True
 DJOLOWIN_ACCOUNTS_REDIRECT_URL = "account:user-detail"
 
 # Defaults variables\
+DJOLOWIN_FRONTEND_URL = "http://localhost:8080"
 DATABASE_CONNECTION_DEFAULT_NAME = os.environ.get("DB_NAME")
 DEFAULT_FROM_EMAIL = "monsieurdjolo@djolo.win"
 DEFAULT_CURRENCY = "cad"
@@ -281,7 +273,7 @@ DEFAULT_CURRENCY_CODE_LENGTH = 3
 DEFAULT_DECIMAL_PLACES = 2
 DEFAULT_MAX_DIGITS = 12
 DEFAULT_CURRENCY_CODE_LENGTH = 3
-DJOLOWIN_PLAYERCARD_PAGINATE_BY = 8
+DJOLOWIN_PLAYERCARD_PAGINATE_BY = 40
 DJOLOWIN_NOTIFICATIONS_PER_PAGE = 20
 DJOLOWIN_SAVE_SENT_EMAILS_TO_DB = True
 LOGIN_ATTEMPTS_TIMEOUT = 60 * 5  # 5 minutes
@@ -315,12 +307,9 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 stripe.api_key = STRIPE_SECRET_KEY
 
 # CORS settings
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:*",
-]
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ORIGIN_WHITELIST = ("http://localhost:8080",)
+CORS_ALLOWED_ORIGINS = ["http://localhost:8080", "http://192.168.1.190:8080"]
 
 JWT_EXPIRE = 60 * 60 * 24 * 7  # 7 days
 
@@ -352,22 +341,37 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_MAX_EMAIL_ADDRESSES = 1
 ACCOUNT_EMAIL_VERIFICATION = "optional"
 
-# SOcial auth settings
-SOCIAL_AUTH_JSONFIELD_ENABLED = True
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get("GOOGLE_CLIENT_KEY")
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get("GOOGLE_SECRET_KEY")
-SOCIAL_AUTH_PIPELINE = [
-    "social_core.pipeline.social_auth.social_details",
-    "social_core.pipeline.social_auth.social_uid",
-    "social_core.pipeline.social_auth.auth_allowed",
-    "social_core.pipeline.social_auth.social_user",
-    "social_core.pipeline.user.get_username",
-    "social_core.pipeline.user.create_user",
-    "social_core.pipeline.social_auth.associate_user",
-    "social_core.pipeline.social_auth.load_extra_data",
-    "social_core.pipeline.user.user_details",
-    "account.social_auth.create_user",
-]
+# Email confirmation
+ACCOUNT_EMAIL_SUBJECT_PREFIX = "DjoloWin: "
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+
+# After 10 failed login attempts, restrict logins for 30 minutes
+ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 10
+ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 1800
+ACCOUNT_PASSWORD_MIN_LENGTH = 12
+
+# Other settings
+# ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
+SOCIALACCOUNT_AUTO_SIGNUP = False
+
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': os.environ.get("GOOGLE_CLIENT_ID"),
+            'secret': os.environ.get("GOOGLE_CLIENT_SECRET"),
+            'key': ''
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'offline',
+        }
+    }
+}
 
 
 CACHES = {

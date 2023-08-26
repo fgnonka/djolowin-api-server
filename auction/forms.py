@@ -1,19 +1,21 @@
 from django import forms
 
-from base.models import Player
-from playercard.models import CardRarity
-from .models import Auction, Bid
+from sports.models import Player
+from card.models import CardRarity
+from .models import CardAuction, CardAuctionBid
 
 
-class AuctionForm(forms.ModelForm):
+class CardAuctionForm(forms.ModelForm):
+    card_id = forms.IntegerField(required=True, label="Card ID")
+    seller_id = forms.IntegerField(required=True, label="Seller ID")
     starting_price = forms.IntegerField(min_value=2000, required=True, label="Starting Price")
     duration = forms.IntegerField(min_value=1, max_value=24, required=True, label="Auction duration (in hours)")
     class Meta:
-        model = Auction
+        model = CardAuction
         fields = ["starting_price", "duration"]
         widgets = {
             "starting_price": forms.NumberInput(attrs={"step": "100.00"}),
-            "duration": forms.NumberInput(attrs={"step": "1.00", "max": "24.00"}),
+            "duration": forms.NumberInput(attrs={"step": "1.00", "max": "96.00"}),
         }
         
         
@@ -37,7 +39,7 @@ class AuctionForm(forms.ModelForm):
 
 class BidForm(forms.ModelForm):
     class Meta:
-        model = Bid
+        model = CardAuctionBid
         fields = ["amount"]
         widgets = {
             "amount": forms.NumberInput(attrs={"step": "100.00", "min": "0.00"}),

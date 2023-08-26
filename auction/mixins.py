@@ -9,7 +9,7 @@ from django.views.generic.detail import SingleObjectMixin
 
 from communication.notifications.actions import send_notification
 from transaction.utils import create_auction_transaction
-from wallet.models import UserWallet
+from userwal.models import UserWallet
 
 from .forms import BidForm, AuctionForm
 from .models import Bid

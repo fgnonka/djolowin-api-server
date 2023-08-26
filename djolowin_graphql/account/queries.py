@@ -1,6 +1,6 @@
 import graphene
 
-from account.models import CustomUser, Address
+from accounts.models import CustomUser, Address
 from core.exceptions import PermissionDenied
 from graphql_auth.schema import UserQuery, MeQuery
 from permission.auth_filters import AuthorizationFilters

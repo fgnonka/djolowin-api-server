@@ -5,6 +5,10 @@ from .models import League, Team, Player
 class PlayerSerializer(serializers.ModelSerializer):
     age = serializers.SerializerMethodField()
     team_name = serializers.SerializerMethodField()
+    league_name = serializers.SerializerMethodField()
+    
+    def get_league_name(self, obj):
+        return obj.team.league.name
     
     def get_team_name(self, obj):
         return obj.team.name

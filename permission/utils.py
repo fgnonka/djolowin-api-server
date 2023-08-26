@@ -4,7 +4,7 @@ from .auth_filters import AuthorizationFilters, resolve_authorization_filter_fn
 from .enums import AccountPermissions, BasePermissionEnum
 
 if TYPE_CHECKING:
-    from ..account.models import User
+    from ..accounts.models import User
 
 
 def one_of_permissions_or_auth_filter_required(
@@ -30,7 +30,7 @@ def one_of_permissions_or_auth_filter_required(
 def permission_required(
     requestor: Union["User", None], perms: Iterable[BasePermissionEnum]
 ) -> bool:
-    from ..account.models import User
+    from ..accounts.models import User
 
     if isinstance(requestor, User):
         return requestor.has_perms(perms)
