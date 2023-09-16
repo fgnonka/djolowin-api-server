@@ -7,10 +7,7 @@ from .renderers import UserRenderer
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import (
-    login as auth_login,
-    logout as auth_logout,
     get_user_model,
-    authenticate,
 )
 from django.shortcuts import redirect
 from django.utils import timezone
@@ -28,20 +25,18 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
 
 from core.mixins import ClientIPMixin
-
-from . import CustomerEvents
+from notification import tasks as notification_tasks
 
 from . import tasks
-from .forms import CustomLoginForm, CustomSignupForm
-from .mixins import VerifyLoggedInMixin, TokenDeleteMixin
+from . import kafka_producers
 from .models import CustomUser as User, UserWallet
-from .send_email import send_verification_email, send_reset_password_email
 from .serializers import (
     UserSerializer,
     RegisterSerializer,
     EmailVerificationSerializer,
     LoginSerializer,
     LogoutSerializer,
+    UserProfileSerializer,
     UserWalletSerializer,
 )
 from .mixins import (
@@ -73,29 +68,24 @@ class SignupView(APIView, ClientIPMixin, TokenExpirationMixin):
         serializer.is_valid(raise_exception=True)
 
         form_email = serializer.validated_data["email"]
-        tasks.signup_attempt_event(
+        tasks.signup_attempt_event.delay(
             initiator=ip_address,
             payload={"ip_address": ip_address, "email": form_email},
         )
-
         serializer.save()
         user_data = serializer.data
         user = User.objects.get(email=user_data["email"])
-        relative_link = reverse(
-            "custom_user:verify-email", kwargs={"token": str(user.verification_token)}
-        )
-        verify_link = f"{FRONTEND_URL}{relative_link}"
-        send_verification_email(user, verify_link)
         try:
             wallet = create_wallet(user.id)
-            print(wallet)
         except Exception as error:
             print(error)
-        tasks.signup_attempt_successful_event(
+        tasks.signup_attempt_successful_event.delay(
             user_id=user.id,
             initiator=user.email,
             payload={"ip_address": ip_address, "email": form_email},
         )
+        # Kafka event "account_created" is sent here
+        kafka_producers.kafka_user_account_created_event(user.id)
         return Response(
             user_data, status=status.HTTP_201_CREATED, content_type="application/json"
         )
@@ -111,9 +101,11 @@ class VerifyEmailView(APIView):
             user.verification_token = None
             user.verification_token_expiration = None
             user.save()
-            tasks.account_verified_event(
+            tasks.account_verified_event.delay(
                 initiator=user.email, user_id=user.id, payload={"email": user.email}
             )
+            # Kafka event "account_verified" is sent here
+            kafka_producers.kafka_user_account_verified_event(user.id)
             return Response({"message": "Email verified"}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response(
@@ -130,17 +122,20 @@ class LoginAPIView(APIView, ClientIPMixin):
     def post(self, request):
         email = request.data.get("email")
         ip_address = self.get_client_ip(request)
-        tasks.login_attempt_event(
+        tasks.login_attempt_event.delay(
             initiator=ip_address, payload={"ip_address": ip_address, "email": email}
         )
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = User.objects.get(email=email)
-        tasks.successful_login_event(
+
+        tasks.successful_login_event.delay(
             user_id=user.id,
             initiator=email,
             payload={"ip_address": ip_address, "email": email},
         )
+        # Kafka event "successful_login" is sent here
+        kafka_producers.kafka_successful_login_event(user.id)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -169,7 +164,7 @@ class LogoutAPIView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        tasks.successful_logout_event(
+        tasks.successful_logout_event.delay(
             user_id=request.user.id,
             initiator=request.user.email,
             payload={
@@ -177,6 +172,8 @@ class LogoutAPIView(APIView):
                 "ip_address": request.META.get("REMOTE_ADDR"),
             },
         )
+        # Kafka event "successful_logout" is sent here
+        kafka_producers.kafka_successful_logout_event(request.user.id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -198,7 +195,7 @@ class ObtainNewAccessTokenView(
                     payload_user_id = access_token.payload.get("user_id")
                     expiration = self.get_token_expiration()
                     json_expiration = datetime.timestamp(expiration)
-                    tasks.access_token_generated_event(
+                    tasks.access_token_generated_event.delay(
                         user_id=payload_user_id, payload={"expiration": json_expiration}
                     )
                     response = Response(
@@ -208,21 +205,22 @@ class ObtainNewAccessTokenView(
                         },
                         status=status.HTTP_200_OK,
                     )
+                    # Kafka event "access_token_generated" is sent here
+                    kafka_producers.kafka_access_token_generated_event(
+                        payload_user_id
+                    )
                     return response
                 else:
-                    print("Invalid or expired refresh token")
                     return Response(
                         {"message": "Invalid or expired refresh token"},
                         status=status.HTTP_401_UNAUTHORIZED,
                     )
             except TokenError as e:
-                print("Invalid or expired refresh token 2")
                 return Response(
                     {"message": "Invalid or expired refresh token"},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
         else:
-            print("No refresh token in session")
             return Response(
                 {"message": "No refresh token in session. Please login again."},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -245,7 +243,7 @@ class PasswordResetRequestAPIView(APIView):
                 {"message": "No user found with this email address."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
+        
         # Generate a new password reset token
         reset_token = get_random_string(length=32)
 
@@ -259,13 +257,8 @@ class PasswordResetRequestAPIView(APIView):
         user.reset_password_token_expiration = expiration_datetime
         user.save()
 
-        frontend_reset_url = reverse(
-            "custom_user:password-reset", kwargs={"token": reset_token}
-        )
-        reset_link = f"{FRONTEND_URL}{frontend_reset_url}"
-
-        # Send the reset password link to the user's email
-        send_reset_password_email(user, reset_link)
+        # Kafka event "password_reset_request" is sent here
+        kafka_producers.kafka_password_reset_request_event(user.id)
 
         return Response(
             {"message": "Password reset link sent to your email."},
@@ -278,7 +271,6 @@ class PasswordResetAPIView(APIView):
     permission_classes = []
 
     def post(self, request, *args, **kwargs):
-        print(request.data)
         reset_token = kwargs["token"]
         password = request.data.get("password2")
         if not password:
@@ -318,7 +310,16 @@ class PasswordResetAPIView(APIView):
         user.reset_password_token = None
         user.reset_password_token_expiration = None
         user.save()
-
+        
+        # Kafka event "password_reset_by_user" is sent here
+        kafka_producers.kafka_password_reset_by_user_event(user.id)
+        
+        # Create an event log for the password reset
+        tasks.password_reset_by_user_event.delay(
+            user_id=user.id,
+            initiator=user.email,
+            payload={"email": user.email},
+        )
         return Response(
             {"message": "Password reset successfully."}, status=status.HTTP_200_OK
         )
@@ -335,7 +336,16 @@ class RequestEmailVerificationView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             else:
-                send_verification_email(user)
+                tasks.verification_email_requested_event.delay(
+                    user_id=user.id,
+                    initiator=user.email,
+                    payload={"email": user.email},
+                )
+                notification_tasks.send_verification_email.delay(
+                    username=user.username,
+                    email=user.email,
+                    verification_link=f"{FRONTEND_URL}/verify-email/{user.verification_token}",
+                )
                 return Response(
                     {"message": "Verification email sent"},
                     status=status.HTTP_200_OK,
@@ -347,24 +357,15 @@ class RequestEmailVerificationView(APIView):
             )
 
 
-class UserDetailView(APIView):
-    permission_classes = []
-
+class UserProfileView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserProfileSerializer
+    
     def get(self, request):
-        try:
-            user = request.user
-            if not user.is_authenticated:
-                return Response(
-                    {"message": "You are not authenticated"},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
-            serializer = UserSerializer(user)
-            return Response(serializer.data)
-        except User.DoesNotExist or AttributeError:
-            return Response(
-                {"message": "User does not exist"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        user = request.user
+        serializer = self.serializer_class(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # --------------------------------------------------------------------------------
@@ -414,7 +415,7 @@ class UserWalletDashboardAPIView(RetrieveAPIView):
         selected_wallet = self.get_object()
         if selected_wallet is None:
             return Response(
-                {"detail": "This wallet does not exist."},
+                {"message": "This wallet does not exist."},
                 status=status.HTTP_404_NOT_FOUND,
             )
         serializer = UserWalletSerializer(selected_wallet)

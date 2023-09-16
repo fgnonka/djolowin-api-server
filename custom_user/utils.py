@@ -34,5 +34,5 @@ def check_user_authentication(email, user, ip_address):
 
     if not user.is_verified:
         handle_failed_login(email, ip_address)
-        raise AuthenticationFailed("Email is not verified")
+        raise AuthenticationFailed("Your account is not verified.\n\n Please check your mailbox for the verification email")
 

@@ -1,6 +1,5 @@
 from django.core.mail import send_mail
 from django.conf import settings
-from django.urls import reverse
 
 def send_verification_email(user, verification_link):
     subject = 'Verify Your Email'

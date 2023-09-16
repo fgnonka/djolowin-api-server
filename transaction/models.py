@@ -1,10 +1,10 @@
-from django.conf import settings
 from django.db import models
 
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = (
         ("card_purchase", "Card Purchase"),
+        ("card_sale", "Card Sale"),
         ("bundle_purchase", "Bundle Purchase"),
     )
 

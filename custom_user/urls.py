@@ -8,7 +8,7 @@ from .views import (
     PasswordResetRequestAPIView,
     RequestEmailVerificationView,
     SignupView,
-    UserDetailView,
+    UserProfileView,
     ValidateTokenView,
     VerifyEmailView,
     UserWalletDashboardAPIView
@@ -34,7 +34,7 @@ urlpatterns = [
         name="request-email-verification",
     ),
     path("signup/", SignupView.as_view(), name="signup"),
-    path("user-detail/", UserDetailView.as_view(), name="user-detail"),
+    path("user-profile/", UserProfileView.as_view(), name="user-profile"),
     path("validate-token/", ValidateTokenView.as_view(), name="validate-token"),
     path("verify-email/<str:token>/", VerifyEmailView.as_view(), name="verify-email"),
     path("api/google-oauth/", GoogleAuthAPIView.as_view(), name="google-oauth"),

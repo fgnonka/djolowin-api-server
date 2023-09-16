@@ -9,12 +9,14 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .. import tasks
+from ..kafka_producers import kafka_user_account_created_event, kafka_successful_login_event
 from ..models import CustomUser as User, UserWallet
-from ..send_email import send_verification_email
 
 FRONTEND_URL = settings.DJOLOWIN_FRONTEND_URL
 
 class GoogleAuthAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
     def post(self, request):
         # Get the token from the request
         token = request.data.get("token")
@@ -43,13 +45,10 @@ class GoogleAuthAPIView(APIView):
             )
             user.set_password(User.objects.make_random_password())
             user.save()
+            
             # Create a wallet for the user
             UserWallet.objects.create(user_id=user.id)
-            relative_link = reverse(
-            "custom_user:verify-email", kwargs={"token": str(user.verification_token)}
-        )
-            verify_link = f"{FRONTEND_URL}{relative_link}"
-            send_verification_email(user, verify_link)
+            kafka_user_account_created_event(user.id)
             ip_address = request.META.get("REMOTE_ADDR")    
             tasks.signup_attempt_successful_event(
                 user_id=user.id,
@@ -60,6 +59,7 @@ class GoogleAuthAPIView(APIView):
                 {"message": "Account created successfully. Please check your email for verification."},
                 status=status.HTTP_201_CREATED,
             )
+            
         # If the user exists, check if they are verified
         if not user.is_verified:
             return Response({"message": "Your account is not yet verified. Please check your email for verification."}, status=status.HTTP_400_BAD_REQUEST)
@@ -76,6 +76,7 @@ class GoogleAuthAPIView(APIView):
                 "access": access_token,
             },
         }
+        kafka_successful_login_event(user.id)
         tasks.successful_login_event(
             user_id=user.id,
             initiator=user.email,

@@ -8,7 +8,7 @@ from .models import CardAuction, CardAuctionBid
 class CardAuctionForm(forms.ModelForm):
     card_id = forms.IntegerField(required=True, label="Card ID")
     seller_id = forms.IntegerField(required=True, label="Seller ID")
-    starting_price = forms.IntegerField(min_value=2000, required=True, label="Starting Price")
+    starting_price = forms.IntegerField(min_value=0, required=True, label="Starting Price")
     duration = forms.IntegerField(min_value=1, max_value=24, required=True, label="Auction duration (in hours)")
     class Meta:
         model = CardAuction

@@ -43,13 +43,13 @@ def main():
             position = position_choices[2][0]
         player_data = [
         {
-            "name": f"SOA Player {i}",
+            "name": f"Joueur Africa #{i}",
+            "position": position,
             "date_of_birth": f"1970-01-{str(i).zfill(2)}",
             "jersey_number": f"{i}",
-            "position": position,
             "picture": None,
-            "team_id": 4,  # Replace with the actual team ID
-            "slug": f"player-SOA-{i}",
+            "team_id": 2,  # Replace with the actual team ID
+            "slug": f"player-africa-sports-{i}",
         }
         ]
         for player_info in player_data:

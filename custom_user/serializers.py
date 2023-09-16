@@ -5,6 +5,7 @@ from django.utils.encoding import (
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_decode
 
+from django_countries.fields import Country
 from rest_framework import serializers, status
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -14,41 +15,14 @@ from .models import CustomUser as User, UserWallet
 from .utils import check_user_authentication
 
 
-class UserWalletSerializer(serializers.ModelSerializer):
-    user_id = serializers.IntegerField(read_only=True)
+class CountryFieldSerializer(serializers.Field):
+    def to_representation(self, obj):
+        # Serialize the CountryField as a string (e.g., 'US' for United States)
+        return obj.code
 
-    class Meta:
-        model = UserWallet
-        fields = "__all__"
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("id", "username", "email", "password")
-
-
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(max_length=68, min_length=6, write_only=True)
-
-    default_error_messages = {
-        "username": "The username should only contain alphanumeric characters"
-    }
-
-    class Meta:
-        model = User
-        fields = ["email", "username", "password"]
-
-    def validate(self, attrs):
-        email = attrs.get("email", "")
-        username = attrs.get("username", "")
-
-        if not username.isalnum():
-            raise serializers.ValidationError(self.default_error_messages)
-        return attrs
-
-    def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+    def to_internal_value(self, data):
+        # Deserialize the string back into a Country object
+        return Country(data)
 
 
 class EmailVerificationSerializer(serializers.ModelSerializer):
@@ -92,6 +66,46 @@ class LoginSerializer(serializers.ModelSerializer):
         }
 
 
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+    default_error_message = {"bad_token": ("Token is expired or invalid")}
+
+    def validate(self, attrs):
+        self.token = attrs["refresh"]
+        return attrs
+
+    def save(self, **kwargs):
+        try:
+            RefreshToken(self.token).blacklist()
+
+        except TokenError:
+            self.fail("bad_token")
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(max_length=68, min_length=6, write_only=True)
+
+    default_error_messages = {
+        "username": "The username should only contain alphanumeric characters"
+    }
+
+    class Meta:
+        model = User
+        fields = ["email", "username", "password"]
+
+    def validate(self, attrs):
+        email = attrs.get("email", "")
+        username = attrs.get("username", "")
+
+        if not username.isalnum():
+            raise serializers.ValidationError(self.default_error_messages)
+        return attrs
+
+    def create(self, validated_data):
+        return User.objects.create_user(**validated_data)
+
+
 class ResetPasswordEmailRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(min_length=2)
 
@@ -129,18 +143,37 @@ class SetNewPasswordSerializer(serializers.Serializer):
         return super().validate(attrs)
 
 
-class LogoutSerializer(serializers.Serializer):
-    refresh = serializers.CharField()
+class UserWalletSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(read_only=True)
 
-    default_error_message = {"bad_token": ("Token is expired or invalid")}
+    class Meta:
+        model = UserWallet
+        fields = "__all__"
 
-    def validate(self, attrs):
-        self.token = attrs["refresh"]
-        return attrs
 
-    def save(self, **kwargs):
-        try:
-            RefreshToken(self.token).blacklist()
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "username", "email", "password")
 
-        except TokenError:
-            self.fail("bad_token")
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    address = serializers.SerializerMethodField()
+    country = CountryFieldSerializer()
+
+    class Meta:
+        model = User
+        fields = (
+            "username",
+            "email",
+            "phone_number",
+            "address",
+            "country",
+            "profile_img",
+            "date_joined",
+            "uuid",
+        )
+
+    
+    def get_address(self, obj):
+        return obj.get_address_details if obj.get_address_details else None

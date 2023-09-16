@@ -21,6 +21,7 @@ click-didyoumean==0.3.0
 click-plugins==1.1.1
 click-repl==0.2.0
 ConfigArgParse==1.5.3
+confluent-kafka==2.2.0
 confusable-homoglyphs==3.2.0
 constantly==15.1.0
 cryptography==41.0.1
@@ -56,6 +57,7 @@ graphene-django==2.16.0
 graphql-core==2.3.2
 graphql-relay==2.0.1
 greenlet==2.0.2
+grpcio==1.57.0
 gunicorn==20.1.0
 h11==0.14.0
 httplib2==0.22.0
@@ -65,6 +67,7 @@ incremental==22.10.0
 itsdangerous==2.1.2
 Jinja2==3.1.2
 jwcrypto==1.5.0
+kafka-python==2.0.2
 kombu==5.2.4
 locust==2.15.1
 MarkupSafe==2.1.3
@@ -77,6 +80,7 @@ oauthlib==3.2.2
 opentracing==2.4.0
 pandas==2.0.0
 phonenumbers==8.13.8
+pika==1.3.2
 Pillow==9.5.0
 promise==2.3
 prompt-toolkit==3.0.38
@@ -112,6 +116,7 @@ singledispatch==4.0.0
 six==1.16.0
 sqlparse==0.4.3
 stripe==5.4.0
+supervisor==4.2.5
 sympy==1.12
 text-unidecode==1.3
 Twisted==22.10.0
@@ -123,6 +128,7 @@ uritemplate==4.1.1
 urllib3==1.26.15
 vine==5.0.0
 wcwidth==0.2.6
+websockets==11.0.1
 Werkzeug==2.3.6
 wrapt==1.15.0
 zope.event==5.0

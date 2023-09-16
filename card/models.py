@@ -8,6 +8,8 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 
+from sports.models import Player, Team
+from custom_user.models import CustomUser
 # Create your models here.
 
 
@@ -28,36 +30,30 @@ class CardRarity(models.Model):
 
 
 class PlayerCard(models.Model):
-    player_id = models.IntegerField()
-    player_name = models.CharField(max_length=255)
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
     rarity = models.ForeignKey(
         CardRarity, on_delete=models.CASCADE, null=True, blank=True
     )
     season = models.CharField(_("Season"), max_length=10, default="2024")
-    owner_id = models.IntegerField(_("Owner Id"), null=True, blank=True)
-    value = models.DecimalField(_("Value"), max_digits=10, decimal_places=2)
+    owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
+    value = models.PositiveIntegerField(_("Value"))
     number_likes = models.PositiveIntegerField(_("Likes"), default=0)
     index = models.PositiveIntegerField(_("Index"), default=0)
     date_created = models.DateTimeField(
         _("Date created"), auto_now_add=True, db_index=True
     )
-    # This field is used by Haystack to reindex search
     date_updated = models.DateTimeField(_("Date updated"), auto_now=True, db_index=True)
     is_locked = models.BooleanField(default=False)
     for_sale = models.BooleanField(default=False)
     slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
 
     class Meta:
-        ordering = ["player_name"]
         verbose_name = _("Player Card")
         verbose_name_plural = _("Player Cards")
-        indexes = [
-            models.Index(fields=["player_name", "player_id"]),
-            models.Index(fields=["owner_id"]),
-        ]
+        
 
     def __str__(self):
-        return f"{self.rarity} - {self.player_name} - Index: {self.index}"
+        return f"{self.rarity} - {self.player} - Index: {self.index}"
 
     def get_absolute_url(self):
         return reverse("card:playercard-detail", kwargs={"slug": self.pk})
@@ -67,16 +63,18 @@ class PlayerCard(models.Model):
         details = {
             "card_id": self.pk,
             "player_id": self.player_id,
-            "player_name": self.player_name,
+            "player_name": self.player.name,
             "rarity_name": self.rarity.name,
             "index": self.index,
             "season": self.season,
+            "slug": self.slug,
         }
         return details
     
+    
     @property
     def get_player_name(self):
-        return self.player_name
+        return self.player.name
 
     @property
     def card_rarity_name(self):
@@ -111,7 +109,7 @@ class PlayerCard(models.Model):
 
     def save(self, *args, **kwargs):
         value = (
-            self.player_name
+            self.player.name
             + "-"
             + self.season
             + "-"
@@ -186,7 +184,7 @@ class TeamCollection(models.Model):
     name=models.CharField(max_length=100)
     rarity_name = models.CharField(max_length=100)
     description=models.TextField()
-    team_id = models.IntegerField()
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
     cards = models.ManyToManyField(PlayerCard, blank=True)
     reward_id = models.IntegerField()
     is_active = models.BooleanField(default=True)
@@ -202,7 +200,7 @@ class TeamCollection(models.Model):
     
     
 class CompletedCollection(models.Model):
-    user_id = models.IntegerField()
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     collection = models.ForeignKey(TeamCollection, on_delete=models.CASCADE)
     reward_id = models.IntegerField()
     reward_received = models.BooleanField(default=False)

@@ -32,22 +32,20 @@ class PossiblePhoneNumberField(PhoneNumberField):
 
 class Address(models.Model):
     """A model to represent a user's address."""
-
-    first_name = models.CharField(max_length=255, blank=True)
-    last_name = models.CharField(max_length=255, blank=True)
-    address = models.CharField(max_length=255, blank=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, related_name="user_address", on_delete=models.CASCADE, 
+        null=True, blank=True
+    )
+    street_address = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=255, blank=True)
-    state = models.CharField(max_length=255, blank=True)
+    state = models.CharField(max_length=255, blank=True, null=True)
     country = CountryField(blank=True)
     postal_code = models.CharField(max_length=255, blank=True)
 
-    @property
-    def full_name(self):
-        """Property returning the full name of the user."""
-        return f"{self.first_name} {self.last_name}"
+    
 
     def __str__(self):
-        return f"{self.full_name}--{self.address}--{self.city}--{self.country}"
+        return f"{self.user.username}--{self.street_address}--{self.city}--{self.country}"
 
     def __eq__(self, other):
         if not isinstance(other, Address):
@@ -57,8 +55,8 @@ class Address(models.Model):
     class Meta:
         ordering = ("pk",)
         indexes = [
-            models.Index(fields=["first_name", "last_name"]),
-            models.Index(fields=["address"]),
+            models.Index(fields=["user"]),
+            models.Index(fields=["street_address"]),
             models.Index(fields=["city"]),
             models.Index(fields=["state"]),
             models.Index(fields=["country"]),
@@ -103,9 +101,6 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
     # the user anyways, we will also use the email for logging in because it is
     # the most common form of login credential at the time of writing.
     email = models.EmailField(_("Email address"), unique=True)
-    addresses = models.ManyToManyField(
-        Address, blank=True, related_name="user_addresses"
-    )
     country = CountryField(_("Country"), blank=True)
     default_billing_address = models.ForeignKey(
         Address, related_name="+", null=True, blank=True, on_delete=models.SET_NULL
@@ -139,8 +134,8 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
         _("Password Token Expiration"), null=True, blank=True
     )
     auth_provider = models.CharField(
-        max_length=255, blank=False,
-        null=False, default=AUTH_PROVIDERS.get('email'))
+        max_length=255, blank=False, null=False, default=AUTH_PROVIDERS.get("email")
+    )
     # The `is_staff` flag is expected by Django to determine who can and cannot
     # log into the Django admin site. For most users this flag will always be
     # false.
@@ -190,9 +185,7 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
         self._effective_permissions = None
 
     def __str__(self):
-        """Human-readable representation that overrides the default one that
-        returns the username field."""
-        return str(self.get_username)
+        return self.email
 
     def save(self, *args, **kwargs):
         self.search_document = self.get_search_document()
@@ -207,17 +200,19 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
             output_size = (300, 300)
             img.thumbnail(output_size)
             img.save(self.profile_img.path)
-
-    def clean(self):
-        super().clean()
-        self.email = self.__class__.objects.normalize_email(self.email)
-
+    
     @property
-    def get_username(self):
-        """
-        Return the first_name plus the last_name, with a space in between.
-        """
-        return self.username
+    def get_address_details(self):
+        try:
+            address = self.user_address
+            
+            return address.as_data()
+        except Address.DoesNotExist:
+            return None
+
+    def get_absolute_url(self):
+        """Return the URL to the user detail page."""
+        return reverse("accounts:user-detail", kwargs={"uuid": self.uuid})
 
     def get_search_document(self):
         """Returns a string used for indexing this object in a search engine."""
@@ -234,44 +229,19 @@ class CustomUser(PermissionsMixin, AbstractBaseUser, ModelWithMetadata):
             document += f" {self.country.name}"
         return document
 
-    def get_absolute_url(self):
-        """Return the URL to the user detail page."""
-        return reverse("accounts:user-detail", kwargs={"uuid": self.uuid})
     def tokens(self):
         refresh = RefreshToken.for_user(self)
-        return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
-
-
-class UserWallet(models.Model):
-    user_id = models.IntegerField(unique=True)
-    balance = models.PositiveIntegerField(default=0)
-    reserved_balance = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    @property
-    def available_balance(self):
-        return self.balance - self.reserved_balance
-    
-    @property
-    def owner_name(self):
-        return CustomUser.objects.get(id=self.user_id).get_username
-
-    def __str__(self):
-        return f"{self.user_id} - {self.owner_name} - {self.balance} - {self.reserved_balance}"
-
-    class Meta:
-        verbose_name = _("Wallet")
-        verbose_name_plural = _("Wallets")
+        return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
 
 class CustomerEvent(models.Model):
     """Records events that happened during the customer lifecycle."""
+
     initiator = models.CharField(max_length=255, blank=True, null=True)
-    date = models.DateTimeField(_("Date"), auto_now_add=True,)
+    date = models.DateTimeField(
+        _("Date"),
+        auto_now_add=True,
+    )
     event_type = models.CharField(
         _("Event type"),
         max_length=255,
@@ -289,7 +259,7 @@ class CustomerEvent(models.Model):
         return (
             f"{self.__class__.__name__}(type={self.event_type!r}, user={self.user!r})"
         )
-    
+
     def __str__(self):
         return f"{self.event_type} - {self.user} - {self.date.strftime('%-d %B %Y, %I:%M:%S%p')} - {self.initiator}"
 
@@ -300,6 +270,9 @@ class CheckInHistory(models.Model):
     )
     check_in_time = models.DateTimeField(auto_now_add=True)
     check_in_window = models.CharField(max_length=255, blank=True, null=True)
+
+
+# ------------------- USER GROUP RELATED MODELS ------------------- #
 
 
 class GroupManager(models.Manager):
@@ -349,3 +322,53 @@ class Group(models.Model):
 
     def natural_key(self):
         return (self.name,)
+
+
+# ------------------- WALLET RELATED MODELS ------------------- #
+
+
+class UserWallet(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    balance = models.PositiveIntegerField(default=0)
+    reserved_balance = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def available_balance(self):
+        return self.balance - self.reserved_balance
+
+    @property
+    def owner_name(self):
+        return self.user.username
+
+    def __str__(self):
+        return f"Wallet of {self.user}"
+
+    class Meta:
+        verbose_name = _("Wallet")
+        verbose_name_plural = _("Wallets")
+
+
+# ------------------- USER PREFENCES RELATED MODELS ------------------- #
+
+
+class UserPreferences(models.Model):
+    user = models.OneToOneField(
+        CustomUser, related_name="preferences", on_delete=models.CASCADE
+    )
+    # A user can choose to receive marketing emails from us.
+    receive_email_updates = models.BooleanField(default=True)
+    # A user can choose to receive marketing text messages from us.
+    receive_sms_updates = models.BooleanField(default=True)
+    # A user can choose to receive marketing phone calls from us.
+    receive_phone_call_updates = models.BooleanField(default=True)
+    # A user can choose to receive marketing direct mail from us.
+    receive_direct_mail_updates = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = _("User Preference")
+        verbose_name_plural = _("User Preferences")
+
+    def __str__(self):
+        return f"Preference of {self.user}"

@@ -128,14 +128,6 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db/primary_db.sqlite3",
     },
-    "auction_db": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db/auction_db.sqlite3",
-    },
-    "card_db": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db/card_db.sqlite3",
-    },
     "vcurrency_db": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db/vcurrency_db.sqlite3",
@@ -148,10 +140,6 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db/product_db.sqlite3",
     },
-    "sports_db": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db/sports_db.sqlite3",
-    },
     "transaction_db": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db/transaction_db.sqlite3",
@@ -160,11 +148,8 @@ DATABASES = {
 
 DATABASE_ROUTERS = [
     "app_currency.routers.AppCurrencyRouter",
-    "auction.routers.AuctionRouter",
-    "card.routers.CardRouter",
     "notification.routers.NotificationRouter",
     "product.routers.ProductRouter",
-    "sports.routers.SportsRouter",
     "reward.routers.RewardRouter",
     "transaction.routers.TransactionRouter",
 ]

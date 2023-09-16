@@ -1,9 +1,11 @@
-
-from django.contrib.auth import authenticate
-from custom_user.models import CustomUser as User
 import os
 import random
+
 from rest_framework.exceptions import AuthenticationFailed
+from django.contrib.auth import authenticate
+
+from custom_user.models import CustomUser as User
+from ..kafka_producers import kafka_user_account_created_event
 
 
 def generate_username(name):
@@ -40,7 +42,7 @@ def register_social_user(provider, user_id, email, name):
             'username': generate_username(name), 'email': email,
             'password': os.environ.get('SOCIAL_SECRET')}
         user = User.objects.create_user(**user)
-        user.is_verified = True
+        user.is_verified = False
         user.auth_provider = provider
         user.save()
 

@@ -1,8 +1,5 @@
 # signals.py
-from django.db.models.signals import post_save
-from django.dispatch import receiver, Signal
+from django.dispatch import Signal
 
 
-auction_started = Signal()
-bid_submitted = Signal()
-completed_auction = Signal()
+auction_expired = Signal()
