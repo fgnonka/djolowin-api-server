@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PlayerCard
+from .models import PlayerCard, TeamCollection
 
 class PlayerCardSerializer(serializers.ModelSerializer):
     player_name = serializers.SerializerMethodField()
@@ -34,3 +34,9 @@ class PlayerCardSerializer(serializers.ModelSerializer):
     
     def get_nationality(self, obj):
         return obj.player.nationality.name
+
+class TeamCollectionSerializer(serializers.ModelSerializer):
+    cards = PlayerCardSerializer(many=True, read_only=True)
+    class Meta:
+        model = TeamCollection
+        fields = "__all__"

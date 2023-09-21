@@ -1,12 +1,19 @@
 from celery import shared_task
 
 from custom_user.models import CustomUser
+from .models import NotificationPreferences
 
 from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
 
 FRONTEND_URL = settings.DJOLOWIN_FRONTEND_URL
+
+# --------------------------------------NOTIFICATION PREFERENCES SETUP --------------------------------------#
+@shared_task
+def setup_notification_preferences(user_id):
+    NotificationPreferences.objects.create(user_id=user_id)
+
 
 
 # --------------------------------------USER RELATED EMAILS--------------------------------------#

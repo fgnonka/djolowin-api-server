@@ -20,7 +20,7 @@ def obtain_card_payload(card_id):
         "slug": card.slug,
         "is_locked": card.is_locked,
         "for_sale": card.for_sale,
-        "value": card.value,
+        "price": card.price,
     }
     return payload
 

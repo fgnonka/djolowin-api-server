@@ -1,9 +1,13 @@
 from django.contrib import admin
-from .models import CustomUser, UserWallet, CustomerEvent, UserPreferences, Address
+from .models import CustomUser, UserWallet, CustomerEvent, Address
 from django.contrib.auth.admin import UserAdmin
 
 
+
 class CustomUserAdmin(admin.ModelAdmin):
+    list_display = ("username", "email", "date_joined", "last_login", "is_active", "is_staff", "is_verified")
+    search_fields = ("username", "email")
+    list_filter = ("date_joined", "last_login")
     readonly_fields = (
         "username",
         "email",

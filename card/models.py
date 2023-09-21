@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Q
 from django.shortcuts import reverse
@@ -9,9 +10,9 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 
 from sports.models import Player, Team
-from custom_user.models import CustomUser
-# Create your models here.
 
+# Create your models here.
+CustomUser = get_user_model()
 
 class CardRarity(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -36,7 +37,7 @@ class PlayerCard(models.Model):
     )
     season = models.CharField(_("Season"), max_length=10, default="2024")
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
-    value = models.PositiveIntegerField(_("Value"))
+    price = models.PositiveIntegerField(_("Price"))
     number_likes = models.PositiveIntegerField(_("Likes"), default=0)
     index = models.PositiveIntegerField(_("Index"), default=0)
     date_created = models.DateTimeField(
@@ -108,7 +109,7 @@ class PlayerCard(models.Model):
         return self.owner_id
 
     def save(self, *args, **kwargs):
-        value = (
+        value_to_slugify = (
             self.player.name
             + "-"
             + self.season
@@ -118,7 +119,7 @@ class PlayerCard(models.Model):
             + str(self.index)
         )
         if not self.slug:
-            self.slug = slugify(value, allow_unicode=False)
+            self.slug = slugify(value_to_slugify, allow_unicode=False)
         return super().save(*args, **kwargs)
 
 

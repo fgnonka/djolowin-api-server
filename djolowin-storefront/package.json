@@ -20,6 +20,7 @@
     "graphql": "^16.6.0",
     "graphql-tag": "^2.12.6",
     "jquery": "^3.7.0",
+    "pinia": "^2.1.6",
     "popper.js": "^1.16.1",
     "vue": "^3.3.4",
     "vue-apollo": "^3.1.0",

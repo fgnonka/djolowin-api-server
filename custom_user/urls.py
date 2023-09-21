@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import (
+from .views.account_views import (
     HomeView,
     LoginAPIView,
     LogoutAPIView,
@@ -8,11 +8,12 @@ from .views import (
     PasswordResetRequestAPIView,
     RequestEmailVerificationView,
     SignupView,
-    UserProfileView,
     ValidateTokenView,
     VerifyEmailView,
-    UserWalletDashboardAPIView
 )
+from .views.settings_views import UserAccountSettingsView
+from .views.wallet_views import UserWalletDashboardAPIView
+
 from .google.google import GoogleAuthAPIView
 
 app_name = "custom_user"
@@ -22,7 +23,11 @@ urlpatterns = [
     path("login/", LoginAPIView.as_view(), name="login"),
     path("logout/", LogoutAPIView.as_view(), name="logout"),
     path("obtain-token/", ObtainNewAccessTokenView.as_view(), name="obtain-token"),
-    path("password-reset/<str:token>/", PasswordResetAPIView.as_view(), name="password-reset"),
+    path(
+        "password-reset/<str:token>/",
+        PasswordResetAPIView.as_view(),
+        name="password-reset",
+    ),
     path(
         "password-reset-request/",
         PasswordResetRequestAPIView.as_view(),
@@ -34,9 +39,13 @@ urlpatterns = [
         name="request-email-verification",
     ),
     path("signup/", SignupView.as_view(), name="signup"),
-    path("user-profile/", UserProfileView.as_view(), name="user-profile"),
+    path("user-profile/", UserAccountSettingsView.as_view(), name="user-profile"),
     path("validate-token/", ValidateTokenView.as_view(), name="validate-token"),
     path("verify-email/<str:token>/", VerifyEmailView.as_view(), name="verify-email"),
     path("api/google-oauth/", GoogleAuthAPIView.as_view(), name="google-oauth"),
-    path("wallet/dashboard/", view=UserWalletDashboardAPIView.as_view(), name="wallet-dashboard"),
+    path(
+        "wallet/dashboard/",
+        view=UserWalletDashboardAPIView.as_view(),
+        name="wallet-dashboard",
+    ),
 ]
