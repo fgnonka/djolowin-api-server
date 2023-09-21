@@ -342,19 +342,19 @@ SOCIALACCOUNT_AUTO_SIGNUP = False
 
 
 SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'APP': {
-            'client_id': os.environ.get("GOOGLE_CLIENT_ID"),
-            'secret': os.environ.get("GOOGLE_CLIENT_SECRET"),
-            'key': ''
+    "google": {
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
+            "key": "",
         },
-        'SCOPE': [
-            'profile',
-            'email',
+        "SCOPE": [
+            "profile",
+            "email",
         ],
-        'AUTH_PARAMS': {
-            'access_type': 'offline',
-        }
+        "AUTH_PARAMS": {
+            "access_type": "offline",
+        },
     }
 }
 
@@ -370,4 +370,4 @@ CACHES = {
     }
 }
 
-CACHE_TTL = 60
+CACHE_TTL = 300

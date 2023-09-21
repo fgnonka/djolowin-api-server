@@ -29,6 +29,9 @@ while True:
             print("Account created event received")
             payload = json.loads(message.value.decode("utf-8"))
             notification_tasks.send_verification_email.delay(payload["user_id"])
+            notification_tasks.setup_notification_preferences.delay(
+                payload["user_id"]
+            )
 
         elif message.topic == CustomerEvents.ACCOUNT_VERIFIED:
             print("Account verified event received")

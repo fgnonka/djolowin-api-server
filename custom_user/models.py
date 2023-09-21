@@ -349,26 +349,3 @@ class UserWallet(models.Model):
         verbose_name = _("Wallet")
         verbose_name_plural = _("Wallets")
 
-
-# ------------------- USER PREFENCES RELATED MODELS ------------------- #
-
-
-class UserPreferences(models.Model):
-    user = models.OneToOneField(
-        CustomUser, related_name="preferences", on_delete=models.CASCADE
-    )
-    # A user can choose to receive marketing emails from us.
-    receive_email_updates = models.BooleanField(default=True)
-    # A user can choose to receive marketing text messages from us.
-    receive_sms_updates = models.BooleanField(default=True)
-    # A user can choose to receive marketing phone calls from us.
-    receive_phone_call_updates = models.BooleanField(default=True)
-    # A user can choose to receive marketing direct mail from us.
-    receive_direct_mail_updates = models.BooleanField(default=True)
-
-    class Meta:
-        verbose_name = _("User Preference")
-        verbose_name_plural = _("User Preferences")
-
-    def __str__(self):
-        return f"Preference of {self.user}"

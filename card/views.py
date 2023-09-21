@@ -1,4 +1,9 @@
+import random
+
 from django.db import transaction
+from django.db.models import Q
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -7,37 +12,40 @@ from rest_framework.views import APIView
 from .card_purchase import purchase_card_action
 from .forms import CardForm
 from . import kafka_producers
-from .models import PlayerCard
+from .mixins import FilterMixin
+from .models import PlayerCard, TeamCollection, CardRarity
 from .pagination import CustomPagination
-from .serializers import PlayerCardSerializer
+from .serializers import PlayerCardSerializer, TeamCollectionSerializer
 
 # Create your views here.
 
 
-class OwnedPlayerCardListAPIView(generics.ListAPIView):
+class OwnedPlayerCardListAPIView(generics.ListAPIView, FilterMixin):
     queryset = PlayerCard.objects.all()
     serializer_class = PlayerCardSerializer
     pagination_class = CustomPagination
 
     def get_queryset(self):
-        queryset = PlayerCard.objects.all()
         user_id = self.request.user.id
         if user_id is not None:
-            queryset = queryset.filter(owner_id=user_id)
+            queryset = self.filter_owned_cards()
         return queryset
 
 
-class PlayerCardListAPIView(generics.ListAPIView):
+class PlayerCardListAPIView(generics.ListAPIView, FilterMixin):
     queryset = PlayerCard.objects.all()
     serializer_class = PlayerCardSerializer
     pagination_class = CustomPagination
+    
+    @method_decorator(cache_page(60))
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = PlayerCard.objects.filter(for_sale=True)
-        player_name = self.request.query_params.get("player_name", None)
-        if player_name is not None:
-            queryset = queryset.filter(player_name=player_name)
-        return queryset
+        queryset = self.filter_all_cards()
+        all_rows = list(queryset)
+        random.shuffle(all_rows)
+        return all_rows
 
 
 class PlayerCardDetailAPIView(generics.RetrieveUpdateAPIView):
@@ -82,8 +90,8 @@ class PlayerCardDetailAPIView(generics.RetrieveUpdateAPIView):
         # Update the card
         form = CardForm(data=request.data)
         if form.is_valid():
-            if form.cleaned_data["value"] != selected_card.value:
-                selected_card.value = form.cleaned_data["value"]
+            if form.cleaned_data["price"] != selected_card.price:
+                selected_card.price = form.cleaned_data["price"]
                 
                 # Kafka event "card_price_updated" is sent here
                 kafka_producers.kafka_card_price_updated_event(selected_card.id)
@@ -136,3 +144,16 @@ class PurchaseCardView(generics.RetrieveUpdateAPIView):
                     return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class TeamCollectionListAPIView(generics.ListAPIView):
+    queryset = TeamCollection.objects.all()
+    serializer_class = TeamCollectionSerializer
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        queryset = TeamCollection.objects.all()
+        user_id = self.request.user.id
+        if user_id is not None:
+            queryset = queryset.filter(owner_id=user_id)
+        return queryset
